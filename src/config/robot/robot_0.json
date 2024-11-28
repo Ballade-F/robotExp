@@ -1,0 +1,10 @@
+{
+    "robot_id": 0,
+    "device" : "cpu",
+    "robot_r" : 0.2,
+    "buffer_size": 5,
+    "ctrl_period": 0.1,
+    "decision_period": 0.5,
+    "intention_model_dir" : "/home/zj/Desktop/wzr/robotExp/src/net_model/intention/intention.pt",
+    "allocation_model_dir" : "/home/zj/Desktop/wzr/robotExp/src/net_model/allocation/allocation.pt"
+}

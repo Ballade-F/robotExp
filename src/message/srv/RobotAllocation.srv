@@ -1,0 +1,4 @@
+int8 algorithm
+message/IntVec pre_allocation
+---
+message/IntVec allocation_result
