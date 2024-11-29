@@ -232,80 +232,19 @@ void RobotNode::env_callback(const message::msg::EnvState::SharedPtr msg)
 
 }
 
-void RobotNode::_wait_service(void)
-{
-//等待服务端上线
-    while (!client_intention->wait_for_service(std::chrono::seconds(1)))
-    {
-        //等待时检测rclcpp的状态
-        if (!rclcpp::ok())
-        {
-            RCLCPP_ERROR(this->get_logger(), "client_intention interrupted while waiting for service. Exiting.");
-            return;
-        }
-        RCLCPP_INFO(this->get_logger(), "waiting for intention service to appear...");
-    }
-    RCLCPP_INFO(this->get_logger(), "intention service online");
-    while(!client_allocation->wait_for_service(std::chrono::seconds(1)))
-    {
-        if (!rclcpp::ok())
-        {
-            RCLCPP_ERROR(this->get_logger(), "client_allocation interrupted while waiting for service. Exiting.");
-            return;
-        }
-        RCLCPP_INFO(this->get_logger(), "waiting for allocation service to appear...");
-    }
-    RCLCPP_INFO(this->get_logger(), "allocation service online");
-}
+
 
 void RobotNode::_get_intention(void)
 {
-    message::srv::RobotIntention::Request::SharedPtr request = std::make_shared<message::srv::RobotIntention::Request>();
-    auto result = client_intention->async_send_request(request);
-    //wait for result
-    std::future_status status = result.wait_for(5s); 
-    if (status == std::future_status::ready) 
-    {
-        for(int i = 0; i < robot_num; i++)
-        {
-            robot_intention[i] = result.get()->intention_result.vec_data[i];
-        }
-    }
-    else
-    {
-        RCLCPP_ERROR(this->get_logger(), "Failed to get intention");
-    }
+
 }
 
 void RobotNode::_get_allocation(void)
 {
-    message::srv::RobotAllocation::Request::SharedPtr request = std::make_shared<message::srv::RobotAllocation::Request>();
-    request->algorithm = 2; //0:greedy, 1:ga, 2:network
-    for(int i = 0; i < robot_num; i++)
-    {
-        request->pre_allocation.vec_data[i] = pre_allocation[i];
-    }
-    auto result = client_allocation->async_send_request(request);
-    //wait for result
-    std::future_status status = result.wait_for(5s); 
-    if (status == std::future_status::ready) 
-    {
-        target_list.clear();
-        for(int i = 0; i < result.get()->allocation_result.vec_data.size(); i++)
-        {
-            target_list.push_back(result.get()->allocation_result.vec_data[i]);
-        }
-    }
-    else
-    {
-        RCLCPP_ERROR(this->get_logger(), "Failed to get allocation");
-    }
-}
-
-void RobotNode::_reallocation(void)
-{
 
 }
+
+
 
 int main(int argc, char * argv[])
 {

@@ -20,7 +20,7 @@ using std::placeholders::_1;
 //TODO: 机器人控制周期设置成可调参数
 #define ROBOT_CONTROL_PERIOD (100ms)
 #define ROBOT_DECISION_PERIOD (500ms)
-#define BUFFER_SIZE 5
+#define ROBOT_BUFFER_SIZE 5
 
 class RobotNode : public rclcpp::Node
 {
@@ -34,7 +34,7 @@ public:
     vector<Vector3d> task_states;//各个任务的位置 x, y, theta 但是theta不用
     vector<uint8_t> task_finished;//各个任务是否完成
 
-    // RingBuffer<vector<Vector3d>> robot_states_keyframe;
+    RingBuffer<vector<Vector3d>> robot_states_keyframe;
 
     bool start_flag = false;//开始标志,第一次感知到环境时设置为true
 
@@ -57,7 +57,7 @@ public:
     bool stop_flag = true;
 
     RobotNode(uint8_t robot_id_, Map_2D* map_, MPC* mpc_, HybridAStar* astar_, HybridAStar* astar_dist_)
-    : Node("RobotNode"), robot_id(robot_id_), map_ptr(map_), mpc_ptr(mpc_), astar_ptr(astar_), astar_dist_ptr(astar_dist_)
+    : Node("RobotNode"), robot_id(robot_id_), map_ptr(map_), mpc_ptr(mpc_), astar_ptr(astar_), astar_dist_ptr(astar_dist_),robot_states_keyframe(ROBOT_BUFFER_SIZE)
     {
         robot_num = map_ptr->n_starts;
         task_num = map_ptr->n_tasks;
@@ -80,18 +80,18 @@ public:
         self_ctrl = Vector2d::Zero();
 
         publisher_ = this->create_publisher<message::msg::RobotCtrl>("robot_ctrl", 10);
+
         subscription_ = this->create_subscription<message::msg::EnvState>(
                         "env_state", 10, std::bind(&RobotNode::env_callback, this, _1));
-        client_intention = this->create_client<message::srv::RobotIntention>("robot_intention");
-        client_allocation = this->create_client<message::srv::RobotAllocation>("robot_allocation");
+
         timer_ctrl = this->create_wall_timer(
                     ROBOT_CONTROL_PERIOD, std::bind(&RobotNode::ctrl_timer_callback, this));
-        //回调组，不可重入
-        cb_group_decision = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+        // //回调组，不可重入
+        // cb_group_decision = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+        // timer_decision = this->create_wall_timer(
+        //             ROBOT_DECISION_PERIOD, std::bind(&RobotNode::decision_timer_callback, this), cb_group_decision);
         timer_decision = this->create_wall_timer(
-                    ROBOT_DECISION_PERIOD, std::bind(&RobotNode::decision_timer_callback, this), cb_group_decision);
-
-        _wait_service();
+                    ROBOT_DECISION_PERIOD, std::bind(&RobotNode::decision_timer_callback, this));
 
     } 
 
@@ -104,16 +104,11 @@ private:
 
     vector<int> _unfinished_tasks;
 
-    //TODO: 加互斥锁
 
     //订阅感知信息
     rclcpp::Subscription<message::msg::EnvState>::SharedPtr subscription_;
     //发布控制信息
     rclcpp::Publisher<message::msg::RobotCtrl>::SharedPtr publisher_;
-    //客户端 请求一次意图判断
-    rclcpp::Client<message::srv::RobotIntention>::SharedPtr client_intention;
-    //客户端 请求一次任务分配
-    rclcpp::Client<message::srv::RobotAllocation>::SharedPtr client_allocation;
     //定时器 用于控制频率
     rclcpp::TimerBase::SharedPtr timer_ctrl;
     //定时器 用于控制频率
@@ -123,9 +118,9 @@ private:
     void ctrl_timer_callback();
     void decision_timer_callback();
     void env_callback(const message::msg::EnvState::SharedPtr msg);
-    void _wait_service(void);
+
     void _get_intention(void);
     void _get_allocation(void);
-    void _reallocation(void);
+
 };
 
