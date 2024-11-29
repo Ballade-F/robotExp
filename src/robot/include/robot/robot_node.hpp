@@ -22,7 +22,7 @@ using std::placeholders::_1;
 #define ROBOT_DECISION_PERIOD (500ms)
 #define BUFFER_SIZE 5
 
-class Robot : public rclcpp::Node
+class RobotNode : public rclcpp::Node
 {
 public:
 //感知
@@ -47,6 +47,7 @@ public:
 
 //规划
     HybridAStar* astar_ptr;
+    HybridAStar* astar_dist_ptr;//用于决策，只需要计算距离，不需要路径，要尽可能快
     bool replan_flag = false;
 
 //控制
@@ -55,8 +56,8 @@ public:
     Vector2d self_ctrl;
     bool stop_flag = true;
 
-    Robot(uint8_t robot_id_, Map_2D* map_, MPC* mpc_, HybridAStar* astar_)
-    : Node("Robot"), robot_id(robot_id_), map_ptr(map_), mpc_ptr(mpc_), astar_ptr(astar_)
+    RobotNode(uint8_t robot_id_, Map_2D* map_, MPC* mpc_, HybridAStar* astar_, HybridAStar* astar_dist_)
+    : Node("RobotNode"), robot_id(robot_id_), map_ptr(map_), mpc_ptr(mpc_), astar_ptr(astar_), astar_dist_ptr(astar_dist_)
     {
         robot_num = map_ptr->n_starts;
         task_num = map_ptr->n_tasks;
@@ -66,6 +67,7 @@ public:
         robot_intention.resize(robot_num, -2);//-2表示未知, -1表示无任务
         pre_allocation.resize(robot_num, -2);//-2表示不管, -1表示无任务
         target_list.reserve(task_num);
+        _unfinished_tasks.reserve(task_num);
         for(int i = 0; i < robot_num; i++)
         {
             robot_states[i] = map_ptr->starts[i];
@@ -79,15 +81,15 @@ public:
 
         publisher_ = this->create_publisher<message::msg::RobotCtrl>("robot_ctrl", 10);
         subscription_ = this->create_subscription<message::msg::EnvState>(
-                        "env_state", 10, std::bind(&Robot::env_callback, this, _1));
+                        "env_state", 10, std::bind(&RobotNode::env_callback, this, _1));
         client_intention = this->create_client<message::srv::RobotIntention>("robot_intention");
         client_allocation = this->create_client<message::srv::RobotAllocation>("robot_allocation");
         timer_ctrl = this->create_wall_timer(
-                    ROBOT_CONTROL_PERIOD, std::bind(&Robot::ctrl_timer_callback, this));
+                    ROBOT_CONTROL_PERIOD, std::bind(&RobotNode::ctrl_timer_callback, this));
         //回调组，不可重入
         cb_group_decision = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
         timer_decision = this->create_wall_timer(
-                    ROBOT_DECISION_PERIOD, std::bind(&Robot::decision_timer_callback, this), cb_group_decision);
+                    ROBOT_DECISION_PERIOD, std::bind(&RobotNode::decision_timer_callback, this), cb_group_decision);
 
         _wait_service();
 
@@ -99,6 +101,10 @@ public:
 private:
     uint8_t perception_counter = 0; //感知丢失计数
     uint8_t perception_max = 5; //感知丢失最大数
+
+    vector<int> _unfinished_tasks;
+
+    //TODO: 加互斥锁
 
     //订阅感知信息
     rclcpp::Subscription<message::msg::EnvState>::SharedPtr subscription_;
@@ -120,4 +126,6 @@ private:
     void _wait_service(void);
     void _get_intention(void);
     void _get_allocation(void);
+    void _reallocation(void);
 };
+

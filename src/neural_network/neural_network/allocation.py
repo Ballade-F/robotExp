@@ -10,8 +10,8 @@ from module import SelfAttentionBlock
 
 # 输入[batch, n_robot, 3]，[batch, n_robot, 3]，[batch, n_obstacle, ob_points, 2]
 class AllocationNet(nn.Module):
-    def __init__(self, ob_points:int,
-                 embedding_size:int, batch_size:int, attention_head:int,
+    def __init__(self, ob_points:int = 16,
+                 embedding_size:int = 128, batch_size:int = 1, attention_head:int = 8,
                  rt_dim:int = 3, ob_dim:int = 2, C:float = 10.0,
                  encoder_layer:int = 3, local_embed_layers:int=2, device='cpu'):
         super(AllocationNet, self).__init__()

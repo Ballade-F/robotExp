@@ -60,15 +60,15 @@ class Robot:
         intention_model_dir = robot_info["intention_model_dir"]
         allocation_model_dir = robot_info["allocation_model_dir"]
 
+        #TODO: 如果intention效果不好，考虑使用mask盖住已经完成的任务
         self.intention_judgment = intention.IntentionNet(ob_points=self.ob_points,r_points = self.buffer_size,device=self.device)
         self.intention_judgment.load_state_dict(torch.load(intention_model_dir, map_location=self.device))
         self.intention_judgment.config({'n_robot':self.n_robot, 
                                         'n_task':self.n_task, 
                                         'n_obstacle':self.n_obstacle})
         
-        self.greedy_allocation = greedy.GreedyTaskAllocationPlanner()
-        #TODO: 想想邻接矩阵怎么搞
-        #TODO: 用网络模型替换
+        self.allocation_network = allocation.AllocationNet(ob_points=self.ob_points,device=self.device)
+        
 
 
 

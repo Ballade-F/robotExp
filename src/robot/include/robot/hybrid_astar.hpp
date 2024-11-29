@@ -75,6 +75,9 @@ public:
     std::multimap<double, Node3D*> openSet;
     PlanResult result;
 
+    //开关标志
+    bool path_flag = true;//是否需要路径
+
 private:
     //提前算好离散vw对应的弧长（代价），割线长度，割线与切线夹角，转角
     vector<Vector2d> vwList;
@@ -88,8 +91,10 @@ private:
 
 
 public:
-    HybridAStar(Vector3d resolution, Vector3i grid_size, uint8_t* grid_map, double max_v = 1.0, double max_w = 1.0, int step_v = 1, int step_w = 1, double dt = 0.1, double finish_radius = 0.1)
-        : resolution(resolution), grid_size(grid_size), grid_map(grid_map), finish_radius(finish_radius), max_v(max_v), max_w(max_w), step_v(step_v), step_w(step_w), dt(dt)
+    HybridAStar(Vector3d resolution, Vector3i grid_size, uint8_t* grid_map, double max_v = 1.0, double max_w = 1.0, int step_v = 1, int step_w = 1, 
+                double dt = 0.1, double finish_radius = 0.1, bool path_flag_ = true)
+            : resolution(resolution), grid_size(grid_size), grid_map(grid_map), finish_radius(finish_radius), 
+              max_v(max_v), max_w(max_w), step_v(step_v), step_w(step_w), dt(dt), path_flag(path_flag_)
     {
         map_max = Vector3d(grid_size[0]*resolution[0],grid_size[1]*resolution[1],2*M_PI);
         nodes.resize(grid_size[0]*grid_size[1]*grid_size[2],nullptr);
