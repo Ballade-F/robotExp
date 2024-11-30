@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ROOT_DIR=/home/zj/Desktop/wzr/robotExp
-INSTALL_DIR=/home/zj/Desktop/wzr/robotExp/src/robot/thirdparty
+ROOT_DIR=/home/jxl3028/Desktop/wzr/robotExp
+INSTALL_DIR=/home/jxl3028/Desktop/wzr/robotExp/src/robot/thirdparty
 
 # INSTALL LIBUSB
 LINUSB_VERSION=1.0.27

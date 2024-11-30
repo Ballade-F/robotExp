@@ -22,8 +22,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(matplotlib_cpp REQUIRED)
-find_package(Python3 COMPONENTS Development NumPy REQUIRED)
+# find_package(matplotlib_cpp REQUIRED)
+# find_package(Python3 COMPONENTS Development NumPy REQUIRED)
 find_package(message REQUIRED)
 
 
@@ -43,7 +43,7 @@ file(GLOB ROBOT_SOURCEFILE
   ${CMAKE_SOURCE_DIR}/src/*.cpp)
 add_library(ROBOT_LIB STATIC ${ROBOT_SOURCEFILE})
 target_link_directories(ROBOT_LIB PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/lib)
-target_link_libraries(ROBOT_LIB Python3::Python Python3::NumPy jsoncpp osqp qdldl tinyxml2)
+target_link_libraries(ROBOT_LIB jsoncpp osqp qdldl tinyxml2)
 
 add_executable(sim_node src/sim_map_node.cc)
 target_link_libraries(sim_node ROBOT_LIB)
@@ -51,7 +51,7 @@ ament_target_dependencies(sim_node rclcpp std_msgs message)
 
 add_executable(robot_node src/robot_node.cc)
 target_link_directories(robot_node PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/lib)
-target_link_libraries(robot_node Python3::Python Python3::NumPy jsoncpp osqp qdldl tinyxml2 ROBOT_LIB)
+target_link_libraries(robot_node jsoncpp osqp qdldl tinyxml2 ROBOT_LIB)
 ament_target_dependencies(robot_node rclcpp std_msgs message)
 
 install(TARGETS 

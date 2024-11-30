@@ -6,8 +6,8 @@
 #include <memory>
 #include <random>
 #include <cmath>
-#include "matplotlibcpp.h"
-namespace plt = matplotlibcpp;
+// #include "matplotlibcpp.h"
+// namespace plt = matplotlibcpp;
 using namespace std;
 using namespace Eigen;
 
@@ -68,6 +68,6 @@ public:
     void input_map(const vector<Vector3d> &starts_, const vector<Vector3d> &tasks_, const vector<vector<Vector2d>> &obstacles_);
 
     // 显示地图
-    void show_map();
-    void show_grid_map();
+    // void show_map();
+    // void show_grid_map();
 };

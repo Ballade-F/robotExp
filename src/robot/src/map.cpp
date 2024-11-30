@@ -69,43 +69,43 @@ void Map_2D::input_map(const vector<Vector3d> &starts_, const vector<Vector3d> &
     }
 }
 
-void Map_2D::show_map()
-{
-    plt::cla();
-    plt::xlim(0.0, static_cast<double>(n_x) * resolution_x);
-    plt::ylim(0.0, static_cast<double>(n_y) * resolution_y);
-    for (int i = 0; i < n_starts; i++)
-    {
-        plt::plot({starts[i].x()} , {starts[i].y()} , "ro");
-    }
-    for (int i = 0; i < n_tasks; i++)
-    {
-        plt::plot({tasks[i].x()} , {tasks[i].y()} , "go");
-    }
-    for (int i = 0; i < n_obstacles; i++)
-    {
-        vector<Vector2d> obstacle = obstacles[i];
-        for (int j = 0; j < n_ob_points; j++)
-        {
-            Vector2d point1 = obstacle[j];
-            Vector2d point2 = obstacle[(j + 1) % n_ob_points];
-            plt::plot({point1.x(), point2.x()}, {point1.y(), point2.y()}, "b-");
-        }
-    }
-    // plt::show();
-}
+// void Map_2D::show_map()
+// {
+//     plt::cla();
+//     plt::xlim(0.0, static_cast<double>(n_x) * resolution_x);
+//     plt::ylim(0.0, static_cast<double>(n_y) * resolution_y);
+//     for (int i = 0; i < n_starts; i++)
+//     {
+//         plt::plot({starts[i].x()} , {starts[i].y()} , "ro");
+//     }
+//     for (int i = 0; i < n_tasks; i++)
+//     {
+//         plt::plot({tasks[i].x()} , {tasks[i].y()} , "go");
+//     }
+//     for (int i = 0; i < n_obstacles; i++)
+//     {
+//         vector<Vector2d> obstacle = obstacles[i];
+//         for (int j = 0; j < n_ob_points; j++)
+//         {
+//             Vector2d point1 = obstacle[j];
+//             Vector2d point2 = obstacle[(j + 1) % n_ob_points];
+//             plt::plot({point1.x(), point2.x()}, {point1.y(), point2.y()}, "b-");
+//         }
+//     }
+//     // plt::show();
+// }
 
-void Map_2D::show_grid_map()
-{
-    plt::cla();
-    uint8_t grid_reverse[n_x * n_y];
-    for (int i = 0; i < n_x; i++)
-    {
-        for (int j = 0; j < n_y; j++)
-        {
-            grid_reverse[j * n_x + i] = 255-grid_map[j * n_x + i];
-        }
-    }
-    plt::imshow(grid_reverse, n_x, n_y, 1, {{"cmap", "gray"}});
-    plt::show();
-}
+// void Map_2D::show_grid_map()
+// {
+//     plt::cla();
+//     uint8_t grid_reverse[n_x * n_y];
+//     for (int i = 0; i < n_x; i++)
+//     {
+//         for (int j = 0; j < n_y; j++)
+//         {
+//             grid_reverse[j * n_x + i] = 255-grid_map[j * n_x + i];
+//         }
+//     }
+//     plt::imshow(grid_reverse, n_x, n_y, 1, {{"cmap", "gray"}});
+//     plt::show();
+// }

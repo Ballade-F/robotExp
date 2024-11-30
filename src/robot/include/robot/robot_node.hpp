@@ -15,6 +15,8 @@
 #include "hybrid_astar.hpp"
 #include "ring_buffer.hpp"
 
+using namespace std;
+using namespace Eigen;
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 //TODO: 机器人控制周期设置成可调参数
