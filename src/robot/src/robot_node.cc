@@ -75,7 +75,7 @@ void RobotNode::decision_timer_callback()
     {
         return;
     }
-    // robot_states_keyframe.push(robot_states);
+    robot_states_keyframe.push(robot_states);
 
     //intention
     _get_intention();
