@@ -58,46 +58,9 @@ public:
     Vector2d self_ctrl;
     bool stop_flag = true;
 
-    RobotNode(uint8_t robot_id_, Map_2D* map_, MPC* mpc_, HybridAStar* astar_, HybridAStar* astar_dist_)
-    : Node("RobotNode"), robot_id(robot_id_), map_ptr(map_), mpc_ptr(mpc_), astar_ptr(astar_), astar_dist_ptr(astar_dist_),robot_states_keyframe(ROBOT_BUFFER_SIZE)
-    {
-        robot_num = map_ptr->n_starts;
-        task_num = map_ptr->n_tasks;
-        robot_states.resize(robot_num, Vector3d::Zero());
-        task_states.resize(task_num, Vector3d::Zero());
-        task_finished.resize(task_num, 0);
-        robot_intention.resize(robot_num, -2);//-2表示未知, -1表示无任务
-        pre_allocation.resize(robot_num, -2);//-2表示不管, -1表示无任务
-        target_list.reserve(task_num);
-        _unfinished_tasks.reserve(task_num);
-        for(int i = 0; i < robot_num; i++)
-        {
-            robot_states[i] = map_ptr->starts[i];
-        }
-        for(int i = 0; i < task_num; i++)
-        {
-            task_states[i] = map_ptr->tasks[i];
-        }
-        self_state = robot_states[robot_id];
-        self_ctrl = Vector2d::Zero();
 
-        publisher_ = this->create_publisher<message::msg::RobotCtrl>("robot_ctrl", 10);
 
-        subscription_ = this->create_subscription<message::msg::EnvState>(
-                        "env_state", 10, std::bind(&RobotNode::env_callback, this, _1));
-
-        timer_ctrl = this->create_wall_timer(
-                    ROBOT_CONTROL_PERIOD, std::bind(&RobotNode::ctrl_timer_callback, this));
-        // //回调组，不可重入
-        // cb_group_decision = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
-        // timer_decision = this->create_wall_timer(
-        //             ROBOT_DECISION_PERIOD, std::bind(&RobotNode::decision_timer_callback, this), cb_group_decision);
-        timer_decision = this->create_wall_timer(
-                    ROBOT_DECISION_PERIOD, std::bind(&RobotNode::decision_timer_callback, this));
-
-    } 
-
-    
+    RobotNode(uint8_t robot_id_, Map_2D* map_, MPC* mpc_, HybridAStar* astar_, HybridAStar* astar_dist_);
 
 
 private:
