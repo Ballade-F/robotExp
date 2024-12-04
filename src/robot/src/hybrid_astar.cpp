@@ -1,7 +1,37 @@
 #include "hybrid_astar.hpp"
 
+void HybridAStar::init(Vector3d resolution, Vector3i grid_size, uint8_t *grid_map, double max_v, double max_w, int step_v, int step_w, int trace_step_, double dt, double finish_radius, bool path_flag_)
+{
+    this->resolution = resolution;
+    this->grid_size = grid_size;
+    this->grid_map = grid_map;
+    this->finish_radius = finish_radius;
+    this->max_v = max_v;
+    this->max_w = max_w;
+    this->step_v = step_v;
+    this->step_w = step_w;
+    this->dt = dt;
+    this->path_flag = path_flag_;
+    this->trace_step = trace_step_;
+    map_max = Vector3d(grid_size[0]*resolution[0],grid_size[1]*resolution[1],2*M_PI);
+    nodes.resize(grid_size[0]*grid_size[1]*grid_size[2],nullptr);
+    for (int i = 0; i < grid_size[0]; i++)
+    {
+        for (int j = 0; j < grid_size[1]; j++)
+        {
+            for (int k = 0; k < grid_size[2]; k++)
+            {
+                Node3D* node = new Node3D;
+                node->index = Vector3i(i,j,k);
+                node->state = Vector3d(i*resolution[0],j*resolution[1],k*resolution[2]);
+                nodes[i*grid_size[1]*grid_size[2]+j*grid_size[2]+k] = node;
+            }
+        }
+    }
+    _generateNeighborList();
+}
 
-PlanResult& HybridAStar::plan(Vector3d start, Vector3d goal)
+PlanResult &HybridAStar::plan(Vector3d start, Vector3d goal)
 {
     auto start_time = std::chrono::high_resolution_clock::now();
 

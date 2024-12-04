@@ -11,6 +11,21 @@
 using namespace std;
 using namespace Eigen;
 
+class IntentionResult
+{
+public:
+	vector<int> intention_id;
+	vector<double> intention_prob;
+	double intention_time;//ms
+};
+
+class AllocationResult
+{
+public:
+	vector<int> allocation;
+	double allocation_time;//ms
+};
+
 class Network
 {
 public:
@@ -37,15 +52,18 @@ public:
     // vector<vector<Vector2d>> obstacles;
 
     //调试
-    double intention_time = 0; //ms
-    double allocation_time = 0; //ms
+    // double intention_time = 0; //ms
+    // double allocation_time = 0; //ms
+
+    IntentionResult intention_result;
+    AllocationResult allocation_result;
 
 
     Network(double x_max_, double y_max, int n_robot_, int n_task_, int n_obstacle_, int ob_point_, int r_point_,
             string allocation_model_path_, string intention_model_path_, string device_string_, string map_path_);
 
-    vector<int> getAllocation(const vector<Vector3d>& robot_states_, const vector<Vector3d>& task_states_, 
-                              const vector<uint8_t>& task_finished_, const vector<int>& pre_allocation_);
-    vector<int> getIntention(const RingBuffer<vector<Vector3d>>& robot_states_keyframe_, 
+    const AllocationResult& getAllocation(const vector<Vector3d>& robot_states_, const vector<Vector3d>& task_states_, 
+                               vector<uint8_t> task_finished_,  vector<int> pre_allocation_);
+    const IntentionResult& getIntention(const RingBuffer<vector<Vector3d>>& robot_states_keyframe_, 
                              const vector<Vector3d>& task_states_, const vector<uint8_t>& task_finished_);
 };

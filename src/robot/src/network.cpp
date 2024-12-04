@@ -1,7 +1,7 @@
 #include "network.hpp"
 
 Network::Network(double x_max_, double y_max, int n_robot_, int n_task_, int n_obstacle_, int ob_point_, int r_point_,
-            string allocation_model_path_, string intention_model_path_, string device_string_, string map_path_)
+            string allocation_model_path_, string intention_model_path_, string device_string_, string map_csv_path_)
 {
     n_robot = n_robot_;
     n_task = n_task_;
@@ -81,10 +81,9 @@ Network::Network(double x_max_, double y_max, int n_robot_, int n_task_, int n_o
 
     obstacles = torch::zeros({batch_size,n_obstacle, ob_point, 2}, torch::kFloat32);
     // Load the obstacles, map_path_文件夹下的info.csv文件
-    ifstream csvfile(map_path_ + "/info.csv");
+    ifstream csvfile(map_csv_path_);
     std::string line;
     int idx = 0;
-
     while (std::getline(csvfile, line)) 
     {
         std::istringstream ss(line);
@@ -94,7 +93,7 @@ Network::Network(double x_max_, double y_max, int n_robot_, int n_task_, int n_o
         {
             row.push_back(token);
         }
-        if(idx > n_robot+n_task)
+        if(idx > n_robot+n_task && idx <= n_robot+n_task+n_obstacle*ob_point)
         {
             int idx_ob = std::stoi(row[0]) - 1;
             int idx_point = (idx - n_robot - n_task - 1) - idx_ob * ob_point;
@@ -103,12 +102,106 @@ Network::Network(double x_max_, double y_max, int n_robot_, int n_task_, int n_o
         }
         idx++;
     }
+    csvfile.close();
 
 }
 
-//x_r: (batch, n_robot,r_points, 2), x_t: (batch, self.n_task, 3), x_ob: (batch, n_obstacle, ob_points, 2)
-//robot_states_keyframe_: r_points, n_robot, 3
-vector<int> Network::getIntention(const RingBuffer<vector<Vector3d>> &robot_states_keyframe_, const vector<Vector3d> &task_states_, const vector<uint8_t> &task_finished_)
+const AllocationResult& Network::getAllocation(const vector<Vector3d> &robot_states_, const vector<Vector3d> &task_states_, vector<uint8_t> task_finished_,  vector<int> pre_allocation_)
+{
+    //寻找有效的robot
+    int valid_robot_num = 0;
+    vector<int> valid_robot;
+    for (int i = 0; i < n_robot; i++)
+    {
+        // -2表示未分配, -1表示停止，>=0表示任务
+        if (pre_allocation_[i] == -2)
+        {
+            valid_robot.push_back(i);
+            valid_robot_num++;
+        }
+        else if (pre_allocation_[i] >= 0)
+        {
+            valid_robot.push_back(i);
+            valid_robot_num++;
+            task_finished_[pre_allocation_[i]] = 1;//标记任务已经被分配
+        }
+    }
+    torch::Tensor robot_tensor = torch::zeros({batch_size, valid_robot_num, 3}, torch::kFloat32);
+    for (int i = 0; i < valid_robot_num; i++)
+    {
+        //如果是未分配，就是机器人的位置，如果是分配了，就是任务的位置
+        if(pre_allocation_[valid_robot[i]] == -2)
+        {
+            robot_tensor[0][i][0] = robot_states_[valid_robot[i]][0] / x_max;
+            robot_tensor[0][i][1] = robot_states_[valid_robot[i]][1] / y_max;
+            robot_tensor[0][i][2] = -1;//-1表示机器人，0表示任务
+        }
+        else
+        {
+            robot_tensor[0][i][0] = task_states_[pre_allocation_[valid_robot[i]]][0] / x_max;
+            robot_tensor[0][i][1] = task_states_[pre_allocation_[valid_robot[i]]][1] / y_max;
+            robot_tensor[0][i][2] = -1;
+        }
+    }
+
+    //寻找有效的task
+    int valid_task_num = 0;
+    vector<int> valid_task;
+    for (int i = 0; i < n_task; i++)
+    {
+        if (task_finished_[i] == 0)
+        {
+            valid_task.push_back(i);
+            valid_task_num++;
+        }
+    }
+    torch::Tensor task_tensor = torch::zeros({batch_size, valid_task_num, 3}, torch::kFloat32);
+    for (int i = 0; i < valid_task_num; i++)
+    {
+        task_tensor[0][i][0] = task_states_[valid_task[i]][0] / x_max;
+        task_tensor[0][i][1] = task_states_[valid_task[i]][1] / y_max;
+        task_tensor[0][i][2] = 0;
+    }
+
+    //forward
+    allocation_model.run_method("config_script",valid_robot_num, valid_task_num, n_obstacle, ob_point, batch_size, device_string);
+    allocation_inputs.clear();
+    allocation_inputs.push_back(robot_tensor.to(device));
+    allocation_inputs.push_back(task_tensor.to(device));
+    allocation_inputs.push_back(obstacles.to(device));
+    allocation_inputs.push_back(torch::randn({1, 2, 2}).to(device));//costmap，没用
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+    auto output = allocation_model.forward(allocation_inputs);//3个tensor的元组，只用第一个，维度(batch, seq)
+    auto end_time = std::chrono::high_resolution_clock::now();
+    double allocation_time = (end_time - start_time).count();
+
+    //取出output的第一个tensor
+    auto output_tensor = output.toTuple()->elements()[0].toTensor();//(batch, seq)
+    allocation_result.allocation.clear();
+    for (int i = 0; i < output_tensor.size(1); i++)
+    {
+        int _id = output_tensor[0][i].item<int>();
+        if(_id == 0)
+        {
+            break;
+        }
+        else
+        {
+            int valid_task_id = _id - valid_robot_num;
+            int task_id = valid_task[valid_task_id];
+            allocation_result.allocation.push_back(task_id);
+        }
+    }
+    allocation_result.allocation_time = allocation_time;
+
+    return allocation_result;
+
+}
+
+// x_r: (batch, n_robot,r_points, 2), x_t: (batch, self.n_task, 3), x_ob: (batch, n_obstacle, ob_points, 2)
+// robot_states_keyframe_: r_points, n_robot, 3
+const IntentionResult& Network::getIntention(const RingBuffer<vector<Vector3d>> &robot_states_keyframe_, const vector<Vector3d> &task_states_, const vector<uint8_t> &task_finished_)
 {
      //robot tensor 归一化
     torch::Tensor robot_tensor = torch::zeros({batch_size, n_robot, r_point, 2}, torch::kFloat32);
@@ -143,34 +236,31 @@ vector<int> Network::getIntention(const RingBuffer<vector<Vector3d>> &robot_stat
     // intention_inputs.push_back(torch::tensor(false).to(device));
 
     auto start_time = std::chrono::high_resolution_clock::now();
-    auto output = intention_model.forward(intention_inputs).toTensor();
+    auto output = intention_model.forward(intention_inputs).toTensor();//(batch, n_robot, task_net_num)
     auto end_time = std::chrono::high_resolution_clock::now();
-    intention_time = (end_time - start_time).count();
+    double intention_time = (end_time - start_time).count();
 
     //softmax and get the max id
-    auto output_cpu = output.to(torch::kCPU);
-    auto output_a = output_cpu.accessor<float, 3>();
-    vector<int> intention(n_robot, -2);
-    for (int i = 0; i < n_robot; i++)
-    {
-        float max_p = 0;
-        int max_id = -2;
-        for (int j = 0; j < task_net_num; j++)
-        {
-            if (output_a[0][i][j] > max_p)
-            {
-                max_p = output_a[0][i][j];
-                max_id = j - 1;
-            }
-        }
-        intention[i] = max_id;
-    }
+    auto output_softmax = torch::softmax(output, 2);//(batch, n_robot, task_net_num)
+    auto output_max = output_softmax.max(2);//(batch, n_robot)， max返回的是值和索引
+    auto output_max_id = std::get<1>(output_max);//(batch, n_robot)
+    auto output_max_prob = std::get<0>(output_max);//(batch, n_robot)
 
     //output
-    
+    intention_result.intention_id.resize(n_robot);
+    intention_result.intention_prob.resize(n_robot);
+    for (int i = 0; i < n_robot; i++)
+    {
+        intention_result.intention_id[i] = output_max_id[0][i].item<int>();
+        if(intention_result.intention_id[i] == n_task)
+        {
+            intention_result.intention_id[i] = -1;
+        }
+        intention_result.intention_prob[i] = output_max_prob[0][i].item<double>();
+    }
+    intention_result.intention_time = intention_time;
 
-
-    
+    return intention_result;
 }
 
 

@@ -1,5 +1,30 @@
 #include "map.hpp"
 
+void Map_2D::init(double resolution_x, double resolution_y, int n_x, int n_y, int n_starts, int n_tasks, int n_obstacles, int n_ob_points)
+{
+    this->resolution_x = resolution_x;
+    this->resolution_y = resolution_y;
+    this->n_x = n_x;
+    this->n_y = n_y;
+    this->n_starts = n_starts;
+    this->n_tasks = n_tasks;
+    this->n_obstacles = n_obstacles;
+    this->n_ob_points = n_ob_points;
+
+    // 初始化地图
+    grid_map = new uint8_t[n_x * n_y];
+    for (int i = 0; i < n_x * n_y; i++)
+    {
+        grid_map[i] = 0;
+    }
+
+    // 初始化任务状态
+    task_status.resize(n_tasks);
+    for (int i = 0; i < n_tasks; i++)
+    {
+        task_status[i] = 0;
+    }
+}
 
 void Map_2D::input_map(const vector<Vector3d> &starts_, const vector<Vector3d> &tasks_, const vector<vector<Vector2d>> &obstacles_)
 {

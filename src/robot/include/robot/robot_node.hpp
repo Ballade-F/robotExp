@@ -2,6 +2,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <iostream>
+#include <fstream>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -14,60 +16,62 @@
 #include "nmpc.hpp"
 #include "hybrid_astar.hpp"
 #include "ring_buffer.hpp"
+#include "network.hpp"
+#include "json/json.h"
 
 using namespace std;
 using namespace Eigen;
 using namespace std::chrono_literals;
 using std::placeholders::_1;
-//TODO: 机器人控制周期设置成可调参数
+
 #define ROBOT_CONTROL_PERIOD (100ms)
-#define ROBOT_DECISION_PERIOD (500ms)
+#define ROBOT_KEYFRAME_PERIOD (500ms)
+#define ROBOT_DECISION_PERIOD (2000ms)
 #define ROBOT_BUFFER_SIZE 5
 
 class RobotNode : public rclcpp::Node
 {
 public:
-//感知
-    Map_2D* map_ptr;
-    uint8_t robot_id;
-    int robot_num;
-    int task_num;
+    int robot_id;
+    //map
+    int map_Nrobot;
+    int map_Ntask;
+    int map_Nobstacle;
+    int map_ob_points;
+    double map_resolution_x;
+    double map_resolution_y;
+    int map_Nx;
+    int map_Ny;
+    //planner
+    int planner_Ntheta;
+    double planner_Vmax;
+    double planner_Wmax;
+    int planner_Vstep;
+    int planner_Wstep;
+    double planner_dt;
+    double planner_Rfinish;
+    //mpc
+    int mpc_N;
+    double mpc_dt;
+    double mpc_wheel_Vmax;
+    double mpc_wheel_width;
+    double mpc_Qxy;
+    double mpc_Qtheta;
+    double mpc_Rv;
+    double mpc_Rw;
+
+
     vector<Vector3d> robot_states;//各个机器人当前的状态 x, y, theta
     vector<Vector3d> task_states;//各个任务的位置 x, y, theta 但是theta不用
     vector<uint8_t> task_finished;//各个任务是否完成
 
-    RingBuffer<vector<Vector3d>> robot_states_keyframe;
+    std::shared_ptr<Map_2D> map_p;
+    std::shared_ptr<MPC> mpc_p;
+    std::shared_ptr<HybridAStar> hybrid_astar_p;
+    std::shared_ptr<HybridAStar> hybrid_dist_astar_p;
 
-    bool start_flag = false;//开始标志,第一次感知到环境时设置为true
-
-//决策
-    vector<int> robot_intention;//-2表示未知, -1表示无任务
-    vector<int> pre_allocation;//-2表示不管, -1表示无任务
-    vector<int> target_list;
-    
-
-
-//规划
-    HybridAStar* astar_ptr;
-    HybridAStar* astar_dist_ptr;//用于决策，只需要计算距离，不需要路径，要尽可能快
-    bool replan_flag = false;
-
-//控制
-    MPC* mpc_ptr;
-    Vector3d self_state;
-    Vector2d self_ctrl;
-    bool stop_flag = true;
-
-
-
-    RobotNode(uint8_t robot_id_, Map_2D* map_, MPC* mpc_, HybridAStar* astar_, HybridAStar* astar_dist_);
-
-
-private:
-    uint8_t perception_counter = 0; //感知丢失计数
-    uint8_t perception_max = 5; //感知丢失最大数
-
-    vector<int> _unfinished_tasks;
+    RobotNode();
+    ~RobotNode();
 
 
     //订阅感知信息
@@ -76,16 +80,19 @@ private:
     rclcpp::Publisher<message::msg::RobotCtrl>::SharedPtr publisher_;
     //定时器 用于控制频率
     rclcpp::TimerBase::SharedPtr timer_ctrl;
-    //定时器 用于控制频率
-    rclcpp::CallbackGroup::SharedPtr cb_group_decision;
+    rclcpp::TimerBase::SharedPtr timer_keyframe;
+    //定时器
+    // rclcpp::CallbackGroup::SharedPtr cb_group_decision;
     rclcpp::TimerBase::SharedPtr timer_decision;
 
     void ctrl_timer_callback();
     void decision_timer_callback();
+    void keyframe_timer_callback();
     void env_callback(const message::msg::EnvState::SharedPtr msg);
 
-    void _get_intention(void);
-    void _get_allocation(void);
+private:
+    void csv2vector(const string& csv_path, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point);
+
 
 };
 

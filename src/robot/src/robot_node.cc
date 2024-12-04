@@ -1,27 +1,104 @@
 #include "robot_node.hpp"
 
-RobotNode::RobotNode(uint8_t robot_id_, Map_2D* map_, MPC* mpc_, HybridAStar* astar_, HybridAStar* astar_dist_)
-: Node("RobotNode"), robot_id(robot_id_), map_ptr(map_), mpc_ptr(mpc_), astar_ptr(astar_), astar_dist_ptr(astar_dist_),robot_states_keyframe(ROBOT_BUFFER_SIZE)
+
+RobotNode::RobotNode(): Node("RobotNode")
 {
-    robot_num = map_ptr->n_starts;
-    task_num = map_ptr->n_tasks;
-    robot_states.resize(robot_num, Vector3d::Zero());
-    task_states.resize(task_num, Vector3d::Zero());
-    task_finished.resize(task_num, 0);
-    robot_intention.resize(robot_num, -2);//-2表示未知, -1表示无任务
-    pre_allocation.resize(robot_num, -2);//-2表示不管, -1表示无任务
-    target_list.reserve(task_num);
-    _unfinished_tasks.reserve(task_num);
-    for(int i = 0; i < robot_num; i++)
-    {
-        robot_states[i] = map_ptr->starts[i];
+    //读取配置信息
+    string map_path;
+    string robot_json_path;
+    string map_csv_path = map_path + "/info.csv";
+    string map_json_path = map_path + "/batch_info.json";
+
+    // 创建 JSON 解析器
+    Json::Reader reader;
+    Json::Value map_root;
+    Json::Value robot_root;
+    // 读取 map.json 文件
+    std::ifstream map_file(map_json_path, std::ifstream::binary);
+    if (!map_file.is_open()) {
+        std::cerr << "can not open file:" << map_json_path << std::endl;
+        return ;
     }
-    for(int i = 0; i < task_num; i++)
-    {
-        task_states[i] = map_ptr->tasks[i];
+    if (!reader.parse(map_file, map_root, false)) {
+        std::cerr << "解析文件失败: " << map_json_path << std::endl;
+        return ;
     }
-    self_state = robot_states[robot_id];
-    self_ctrl = Vector2d::Zero();
+    map_file.close();
+    // 读取 robot.json 文件
+    std::ifstream robot_file(robot_json_path, std::ifstream::binary);
+    if (!robot_file.is_open()) {
+        std::cerr << "无法打开文件: " << robot_json_path << std::endl;
+        return ;
+    }
+    if (!reader.parse(robot_file, robot_root, false)) {
+        std::cerr << "解析文件失败: " << robot_json_path << std::endl;
+        return ;
+    }
+    robot_file.close();
+    // 提取配置信息
+    //map
+    map_Nrobot = map_root["n_robot"].asInt();
+    map_Ntask = map_root["n_task"].asInt();
+    map_Nobstacle = map_root["n_obstacle"].asInt();
+    map_ob_points = map_root["ob_point"].asInt();
+    map_Nx = map_root["n_x"].asInt();
+    map_Ny = map_root["n_y"].asInt();
+    map_resolution_x = map_root["resolution_x"].asDouble();
+    map_resolution_y = map_root["resolution_y"].asDouble();
+    //robot
+    robot_id = robot_root["robot_id"].asInt();
+    //planner
+    planner_Ntheta = robot_root["planner_Ntheta"].asDouble();
+    planner_Vmax = robot_root["planner_Vmax"].asDouble();
+    planner_Wmax = robot_root["planner_Wmax"].asDouble();
+    planner_Vstep = robot_root["planner_Vstep"].asInt();
+    planner_Wstep = robot_root["planner_Wstep"].asInt();
+    planner_dt = robot_root["planner_dt"].asDouble();
+    planner_Rfinish = robot_root["planner_Rfinish"].asDouble();
+    //mpc
+    mpc_N = robot_root["mpc_N"].asInt();
+    mpc_dt = robot_root["mpc_dt"].asDouble();
+    mpc_Qxy = robot_root["mpc_Qxy"].asDouble();
+    mpc_Qtheta = robot_root["mpc_Qtheta"].asDouble();
+    mpc_Rv = robot_root["mpc_Rv"].asDouble();
+    mpc_Rw = robot_root["mpc_Rw"].asDouble();
+    mpc_wheel_width = robot_root["mpc_wheel_width"].asDouble();
+    mpc_wheel_Vmax = robot_root["mpc_wheel_Vmax"].asDouble();
+
+    //map
+    map_p = std::make_shared<Map_2D>();
+    map_p->init(map_resolution_x, map_resolution_y, map_Nx, map_Ny, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points);
+	vector<Vector3d> starts(map_Nrobot, Vector3d::Zero());
+    vector<Vector3d> tasks(map_Ntask, Vector3d::Zero());
+    vector<vector<Vector2d>> obstacles;
+    csv2vector(map_csv_path, obstacles, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points);
+    map_p->input_map(starts, tasks, obstacles);
+
+    //hybrid_astar
+    hybrid_astar_p = std::make_shared<HybridAStar>();
+    hybrid_dist_astar_p = std::make_shared<HybridAStar>();
+    Vector3d resolution(map_resolution_x, map_resolution_y, 2*M_PI/planner_Ntheta);
+    Vector3i grid_size(map_Nx, map_Ny, planner_Ntheta);
+    hybrid_astar_p->init(resolution, grid_size, map_p->grid_map, planner_Vmax, planner_Wmax, 
+                             planner_Vstep, planner_Wstep, planner_dt, planner_Rfinish, true);
+    hybrid_dist_astar_p->init(resolution, grid_size, map_p->grid_map, planner_Vmax, planner_Wmax,
+                                  planner_Vstep, planner_Wstep, planner_dt, planner_Rfinish, false);
+    
+    //mpc
+    Eigen::MatrixXd Q(3, 3);
+    Q << mpc_Qxy, 0, 0,
+         0, mpc_Qxy, 0,
+         0, 0, mpc_Qtheta;
+    Eigen::MatrixXd R(2, 2);
+    R << mpc_Rv, 0,
+         0, mpc_Rw;
+    Eigen::MatrixXd Qf(3, 3);
+    Qf << mpc_Qxy, 0, 0,
+          0, mpc_Qxy, 0,
+          0, 0, mpc_Qtheta;
+    mpc_p = std::make_shared<MPC>();
+    mpc_p->init(mpc_N, mpc_dt, mpc_wheel_Vmax, mpc_wheel_width, Q, R, Qf);
+    
 
     publisher_ = this->create_publisher<message::msg::RobotCtrl>("robot_ctrl", 10);
 
@@ -39,69 +116,9 @@ RobotNode::RobotNode(uint8_t robot_id_, Map_2D* map_, MPC* mpc_, HybridAStar* as
 
 } 
 
-
 void RobotNode::ctrl_timer_callback()
 {
-    if (!start_flag)
-    {
-        return;
-    }
-    if (perception_counter > perception_max)
-    {
-        stop_flag = true;
-    }
-    perception_counter++;
 
-    if(target_list.size() == 0)
-    {
-        replan_flag = false;
-        stop_flag = true;
-    }
-
-    if (replan_flag)
-    {
-        PlanResult& plan_result = astar_ptr->plan(self_state, task_states[target_list[0]]);
-        if (plan_result.success)
-        {
-            int trace_num = plan_result.trace.size();
-            VectorXd x_ref(trace_num), y_ref(trace_num), theta_ref(trace_num), v_ref(trace_num), w_ref(trace_num);
-            for (int i = 0; i < trace_num; i++)
-            {
-                x_ref(i) = plan_result.trace[i](0);
-                y_ref(i) = plan_result.trace[i](1);
-                theta_ref(i) = plan_result.trace[i](2);
-                v_ref(i) = plan_result.trace_controls[i](0);
-                w_ref(i) = plan_result.trace_controls[i](1);
-            }
-            mpc_ptr->setTrackReference(x_ref, y_ref, theta_ref, v_ref, w_ref);
-            replan_flag = false;
-            stop_flag = false;
-        }
-        else
-        {
-            stop_flag = true;
-        }
-        
-    }
-
-    if(!stop_flag)
-    {
-        VectorXd control;
-        VectorXd state(5);
-        state << self_state(0), self_state(1), self_state(2), self_ctrl(0), self_ctrl(1);
-        bool done = mpc_ptr->update(state, control);
-        if (done)
-        {
-            stop_flag = true;
-            control = VectorXd::Zero(2);
-        }
-        self_ctrl(0) = control(0);
-        self_ctrl(1) = control(1); 
-    }
-    else
-    {
-        self_ctrl = Vector2d::Zero();
-    }
     message::msg::RobotCtrl msg;
     msg.id = robot_id;
     msg.v = self_ctrl(0);
@@ -111,129 +128,21 @@ void RobotNode::ctrl_timer_callback()
 
 void RobotNode::decision_timer_callback()
 {
-    if (!start_flag)
-    {
-        return;
-    }
-    robot_states_keyframe.push(robot_states);
+    
+    // //debug
+    // RCLCPP_INFO(this->get_logger(), "robot_id: %d, target_list size: %d; state: %f, %f, %f; ctrl: %f, %f", 
+    //             robot_id, target_list.size(), self_state(0), self_state(1), self_state(2), self_ctrl(0), self_ctrl(1));
 
-    //intention
-    _get_intention();
-    //如果检测到机器人停车，修改pre_allocation给决策用
-    for(int i = 0; i < robot_num; i++)
-    {
-        if(robot_intention[i] == -1)
-        {
-            pre_allocation[i] = -1;
-        }
-        else
-        {
-            pre_allocation[i] = -2;
-        }
-    }
-    //allocation
-    bool reallocation_flag = false;
-    //任务列表为空或者任务列表中有任务被完成
-    if (target_list.size() == 0)
-    {
-        reallocation_flag = true;
-    }
-    else
-    {
-        for (int i = 0; i < target_list.size(); i++)
-        {
-            if (task_finished[target_list[i]] == 1)
-            {
-                reallocation_flag = true;
-                break;
-            }
-        }
-    }
-    if (reallocation_flag)
-    {
-        _get_allocation();
-        if (target_list.size() == 0)
-        {
-            stop_flag = true;
-            replan_flag = false;
-            return;
-        }
-    }
+}
 
-    //冲突消解，最多robot_num-1次
-    bool conflict_flag = false;
-    int _task_id = -1;
-    int _robot_conflict_id = -1;
-    for(int _iterations = 0; _iterations < robot_num-1; _iterations++)
-    {
-        conflict_flag = false;
-        _task_id = -1;
-        _robot_conflict_id = -1;
-        for (int i = 0; i < robot_num; i++)
-        {
-            if(i==robot_id)
-            {
-                continue;
-            }
-            //意图相同
-            if(robot_intention[i] == target_list[0])
-            {
-                _task_id = target_list[0];
-                //计算各自的代价
-                PlanResult& plan_result_other = astar_dist_ptr->plan(robot_states[i], task_states[_task_id]);
-                PlanResult& plan_result_self = astar_dist_ptr->plan(self_state, task_states[_task_id]);
-                if(plan_result_other.success && plan_result_self.success)
-                {
-                    double cost_other = plan_result_other.cost;
-                    double cost_self = plan_result_self.cost;
-                    if(cost_other < cost_self)
-                    {
-                        conflict_flag = true;
-                        _robot_conflict_id = i;
-                        break;
-                    }
-                }
-                else if(plan_result_other.success)
-                {
-                    conflict_flag = true;
-                    _robot_conflict_id = i;
-                    break;
-                }
-
-            }
-        }
-        //没有冲突
-        if(!conflict_flag)
-        {
-            break;
-        }
-        //冲突消解
-        else
-        {
-            reallocation_flag = true;
-            pre_allocation[_robot_conflict_id] = _task_id;//让出任务
-            _get_allocation();
-            if (target_list.size() == 0)
-            {
-                stop_flag = true;
-                replan_flag = false;
-                return;
-            }
-        }
-    }
-    if (reallocation_flag)
-    {
-        replan_flag = true;
-    }
-    //debug
-    RCLCPP_INFO(this->get_logger(), "robot_id: %d, target_list size: %d; state: %f, %f, %f; ctrl: %f, %f", 
-                robot_id, target_list.size(), self_state(0), self_state(1), self_state(2), self_ctrl(0), self_ctrl(1));
+void RobotNode::keyframe_timer_callback()
+{
 
 }
 
 void RobotNode::env_callback(const message::msg::EnvState::SharedPtr msg)
 {
-    start_flag = true;
+    
     for (int i = 0; i < robot_num; i++)
     {
         robot_states[i](0) = msg->robot_list[i].pose.x;
@@ -247,95 +156,57 @@ void RobotNode::env_callback(const message::msg::EnvState::SharedPtr msg)
         task_states[i](2) = msg->task_list[i].pose.theta;
         task_finished[i] = msg->task_list[i].finished;
     }
-    self_state = robot_states[robot_id];
-    perception_counter = 0;//感知到了
-
-    //更新任务列表
-    while(target_list.size() >0)
-    {
-        int target_id = target_list[0];
-        if(task_finished[target_id] == 1)
-        {
-            target_list.erase(target_list.begin());
-            replan_flag = true;
-        }
-        else
-        {
-            break;
-        }
-    }
-    if (target_list.size() == 0)
-    {
-        replan_flag = false;
-        stop_flag = true;
-    }
+    
 
 }
 
 
-
-void RobotNode::_get_intention(void)
-{
-
-}
-
-void RobotNode::_get_allocation(void)
-{
-
-}
 
 
 
 int main(int argc, char * argv[])
 {
-    //map
-    Map_2D map(0.1, 0.1, 100, 100, 1, 2, 1, 4);
-	vector<Vector3d> starts;
-    starts.push_back(Vector3d(0.5, 0.5, 0.0));
-    vector<Vector3d> tasks;
-	tasks.push_back(Vector3d(8.0, 2.0, 0.0));
-    tasks.push_back(Vector3d(9.5, 9.5, 0.0));
-    vector<vector<Vector2d>> obstacles;
-    vector<Vector2d> obstacle;
-    obstacle.push_back(Vector2d(3.0, 3.0));
-    obstacle.push_back(Vector2d(3.0, 5.0));
-    obstacle.push_back(Vector2d(6.0, 5.0));
-    obstacle.push_back(Vector2d(6.0, 3.0));
-    obstacles.push_back(obstacle);
-    map.input_map(starts, tasks, obstacles);
-
-    //hybrid_astar
-    Vector3d resolution(0.1, 0.1, M_PI/8);
-    Vector3i grid_size(100, 100, 16);
-    double max_v = 0.3;
-    double max_w = M_PI/4;
-    int step_v = 2;
-    int step_w = 2;
-    double dt = 0.5;
-    double finish_radius = 0.3;
-    HybridAStar hybrid_astar(resolution, grid_size, map.grid_map, max_v, max_w, step_v, step_w, dt, finish_radius);
-    HybridAStar hybrid_dist_astar(resolution, grid_size, map.grid_map, max_v, max_w, step_v, step_w, dt, finish_radius, false);
-    //mpc
-    int N = 10;
-    double dT = 0.1;
-    Eigen::MatrixXd Q(3, 3);
-    Q << 10, 0, 0,
-         0, 10, 0,
-         0, 0, 1;
-    Eigen::MatrixXd R(2, 2);
-    R << 1, 0,
-         0, 0.1;
-    Eigen::MatrixXd Qf(3, 3);
-    Qf << 10, 0, 0,
-          0, 10, 0,
-          0, 0, 1;
-    MPC mpc(N, dT, 0.4, 0.238, Q, R, Qf);
+    
 
     //ros2 node
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<RobotNode>(0, &map, &mpc, &hybrid_astar, &hybrid_dist_astar);
+    auto node = std::make_shared<RobotNode>();
     rclcpp::spin(node);
     rclcpp::shutdown();
 
     return 0;
+}
+
+
+void RobotNode::csv2vector(const string& csv_path, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point)
+{
+    obstacles_.clear();
+    obstacles_.resize(n_obstacle);
+    for(int i = 0; i < n_obstacle; i++)
+    {
+        vector<Vector2d> obstacle(ob_point, Vector2d::Zero());
+        obstacles_.push_back(obstacle);
+    }
+    ifstream csvfile(csv_path);
+    std::string line;
+    int idx = 0;
+    while (std::getline(csvfile, line)) 
+    {
+        std::istringstream ss(line);
+        std::string token;
+        std::vector<std::string> row;
+        while (std::getline(ss, token, ',')) 
+        {
+            row.push_back(token);
+        }
+        if(idx > n_robot+n_task && idx <= n_robot+n_task+n_obstacle*ob_point)
+        {
+            int idx_ob = std::stoi(row[0]) - 1;
+            int idx_point = (idx - n_robot - n_task - 1) - idx_ob * ob_point;
+            obstacles_[idx_ob][idx_point][0] = std::stof(row[1]);
+            obstacles_[idx_ob][idx_point][1] = std::stof(row[2]);
+        }
+        idx++;
+    }
+    csvfile.close();
 }

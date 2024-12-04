@@ -11,8 +11,11 @@
 class MPC
 {
 public:
-    MPC(int N, double dT, double maxWheelSpeed, double wheelWidth, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd Qf);
+    // MPC();
+    // MPC(int N, double dT, double maxWheelSpeed, double wheelWidth, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd Qf);
     ~MPC();
+
+    void init(int N, double dT, double maxWheelSpeed, double wheelWidth, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd Qf);
 
     void setTrackReference(
         const Eigen::VectorXd& x, 
