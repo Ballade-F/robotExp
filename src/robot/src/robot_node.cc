@@ -1,13 +1,15 @@
 #include "robot_node.hpp"
 
 
-RobotNode::RobotNode(): Node("RobotNode")
+RobotNode::RobotNode(): Node("robot_node")
 {
     //读取配置信息
-    string map_path;
-    string robot_json_path;
-    string map_csv_path = map_path + "/info.csv";
-    string map_json_path = map_path + "/batch_info.json";
+    this->declare_parameter("map_dir","");
+    this->declare_parameter("robot_json_path","");
+    string map_dir = this->get_parameter("map_dir").as_string();
+    string robot_json_path = this->get_parameter("robot_json_path").as_string();
+    string map_csv_path = map_dir + "/info.csv";
+    string map_json_path = map_dir + "/batch_info.json";
 
     // 创建 JSON 解析器
     Json::Reader reader;
@@ -64,6 +66,10 @@ RobotNode::RobotNode(): Node("RobotNode")
     mpc_Rw = robot_root["mpc_Rw"].asDouble();
     mpc_wheel_width = robot_root["mpc_wheel_width"].asDouble();
     mpc_wheel_Vmax = robot_root["mpc_wheel_Vmax"].asDouble();
+    //network
+    string device_string = robot_root["device"].asString();
+    string allocation_model_path = robot_root["allocation_model_path"].asString();
+    string intention_model_path = robot_root["intention_model_path"].asString();
 
     //map
     map_p = std::make_shared<Map_2D>();
@@ -99,7 +105,16 @@ RobotNode::RobotNode(): Node("RobotNode")
     mpc_p = std::make_shared<MPC>();
     mpc_p->init(mpc_N, mpc_dt, mpc_wheel_Vmax, mpc_wheel_width, Q, R, Qf);
     
+    //network
+    double x_max = map_Nx * map_resolution_x;
+    double y_max = map_Ny * map_resolution_y;
+    network_p = std::make_shared<Network>(x_max, y_max, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points, ROBOT_BUFFER_SIZE,
+                                          allocation_model_path, intention_model_path, device_string, map_csv_path);
 
+    //robot
+    robot_p = std::make_shared<Robot>(robot_id, map_p, mpc_p, hybrid_astar_p, hybrid_dist_astar_p, network_p);
+
+    //ros2
     publisher_ = this->create_publisher<message::msg::RobotCtrl>("robot_ctrl", 10);
 
     subscription_ = this->create_subscription<message::msg::EnvState>(
@@ -118,46 +133,44 @@ RobotNode::RobotNode(): Node("RobotNode")
 
 void RobotNode::ctrl_timer_callback()
 {
-
+    robot_p->pncUpdate();
     message::msg::RobotCtrl msg;
     msg.id = robot_id;
-    msg.v = self_ctrl(0);
-    msg.w = self_ctrl(1);
+    auto ctrl_ = robot_p->ctrlOutput();
+    msg.v = ctrl_(0);
+    msg.w = ctrl_(1);
     publisher_->publish(msg);
 }
 
 void RobotNode::decision_timer_callback()
 {
-    
+    robot_p->decisionUpdate();
     // //debug
     // RCLCPP_INFO(this->get_logger(), "robot_id: %d, target_list size: %d; state: %f, %f, %f; ctrl: %f, %f", 
     //             robot_id, target_list.size(), self_state(0), self_state(1), self_state(2), self_ctrl(0), self_ctrl(1));
-
 }
 
 void RobotNode::keyframe_timer_callback()
 {
-
+    robot_p->keyframeUpdate();
 }
 
 void RobotNode::env_callback(const message::msg::EnvState::SharedPtr msg)
 {
-    
-    for (int i = 0; i < robot_num; i++)
+    for (int i = 0; i < map_Nrobot; i++)
     {
         robot_states[i](0) = msg->robot_list[i].pose.x;
         robot_states[i](1) = msg->robot_list[i].pose.y;
         robot_states[i](2) = msg->robot_list[i].pose.theta;
     }
-    for (int i = 0; i < task_num; i++)
+    for (int i = 0; i < map_Ntask; i++)
     {
         task_states[i](0) = msg->task_list[i].pose.x;
         task_states[i](1) = msg->task_list[i].pose.y;
         task_states[i](2) = msg->task_list[i].pose.theta;
         task_finished[i] = msg->task_list[i].finished;
     }
-    
-
+    robot_p->perceptionUpdate(robot_states, task_states, task_finished);
 }
 
 

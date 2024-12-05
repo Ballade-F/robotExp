@@ -5,12 +5,13 @@
 #include <iostream>
 #include <fstream>
 
+#include "network.hpp"
 #include "map.hpp"
 #include "nmpc.hpp"
 #include "hybrid_astar.hpp"
 #include "ring_buffer.hpp"
-#include "network.hpp"
-#include "json/json.h"
+
+
 
 using namespace std;
 using namespace Eigen;
@@ -63,7 +64,7 @@ class Robot
     const Vector2d& ctrlOutput();
 
 private:
-    uint8_t perception_counter = 0; //感知丢失计数
+    uint8_t perception_counter = 10; //感知丢失计数,一开始不能动
     uint8_t perception_max = 5; //感知丢失最大数
 
     void _get_intention(void);

@@ -111,6 +111,10 @@ void Robot::perceptionUpdate(const vector<Vector3d> &robot_states_, const vector
 
 void Robot::keyframeUpdate()
 {
+    if (perception_counter > perception_max)
+    {
+        return;
+    }
     robot_states_keyframe.push(robot_states);
     if(!start_flag && robot_states_keyframe.size() == ROBOT_BUFFER_SIZE)
     {
@@ -120,6 +124,10 @@ void Robot::keyframeUpdate()
 
 void Robot::decisionUpdate()
 {
+    if (perception_counter > perception_max)
+    {
+        return;
+    }
     if (!start_flag && robot_states_keyframe.size()>0)
     {
         _get_allocation();

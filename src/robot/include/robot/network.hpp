@@ -1,3 +1,5 @@
+#pragma once
+
 #include "torch/script.h"
 #include <fstream>
 #include <sstream>
@@ -60,7 +62,7 @@ public:
 
 
     Network(double x_max_, double y_max, int n_robot_, int n_task_, int n_obstacle_, int ob_point_, int r_point_,
-            string allocation_model_path_, string intention_model_path_, string device_string_, string map_path_);
+            string allocation_model_path_, string intention_model_path_, string device_string_, string map_csv_path_);
 
     const AllocationResult& getAllocation(const vector<Vector3d>& robot_states_, const vector<Vector3d>& task_states_, 
                                vector<uint8_t> task_finished_,  vector<int> pre_allocation_);

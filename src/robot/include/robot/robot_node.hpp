@@ -1,3 +1,4 @@
+#pragma once
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -12,12 +13,8 @@
 #include "message/srv/robot_intention.hpp"
 #include "message/srv/robot_allocation.hpp"
 
-#include "map.hpp"
-#include "nmpc.hpp"
-#include "hybrid_astar.hpp"
-#include "ring_buffer.hpp"
-#include "network.hpp"
 #include "json/json.h"
+#include "robot.hpp"
 
 using namespace std;
 using namespace Eigen;
@@ -69,9 +66,12 @@ public:
     std::shared_ptr<MPC> mpc_p;
     std::shared_ptr<HybridAStar> hybrid_astar_p;
     std::shared_ptr<HybridAStar> hybrid_dist_astar_p;
+    std::shared_ptr<Network> network_p;
+
+    std::shared_ptr<Robot> robot_p;
 
     RobotNode();
-    ~RobotNode();
+    // ~RobotNode();
 
 
     //订阅感知信息

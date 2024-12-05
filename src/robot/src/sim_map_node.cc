@@ -75,7 +75,8 @@ void SimServer::updateStates()
 
 int main(int argc, char * argv[])
 {
-	Map_2D map(0.1, 0.1, 100, 100, 1, 2, 1, 4);
+	Map_2D map;
+	map.init(0.1, 0.1, 100, 100, 1, 2, 1, 4);
 	vector<Vector3d> starts;
     starts.push_back(Vector3d(0.5, 0.5, 0.0));
     vector<Vector3d> tasks;
