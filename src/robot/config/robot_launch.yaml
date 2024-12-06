@@ -1,0 +1,4 @@
+/robot_node:
+  ros__parameters:
+    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_0"
+    robot_json_path: "/home/jxl3028/Desktop/wzr/robotExp/src/config/robot/robot_0.json"

@@ -13,6 +13,7 @@ void HybridAStar::init(Vector3d resolution, Vector3i grid_size, uint8_t *grid_ma
     this->dt = dt;
     this->path_flag = path_flag_;
     this->trace_step = trace_step_;
+    this->trace_dt = dt / trace_step;
     map_max = Vector3d(grid_size[0]*resolution[0],grid_size[1]*resolution[1],2*M_PI);
     nodes.resize(grid_size[0]*grid_size[1]*grid_size[2],nullptr);
     for (int i = 0; i < grid_size[0]; i++)

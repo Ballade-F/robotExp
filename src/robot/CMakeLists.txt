@@ -13,7 +13,14 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(OpenCV REQUIRED)
 # find_package(matplotlib_cpp REQUIRED)
 # find_package(Python3 COMPONENTS Development NumPy REQUIRED)
 find_package(message REQUIRED)
@@ -37,15 +44,17 @@ file(GLOB ROBOT_SOURCEFILE
 add_library(ROBOT_LIB STATIC ${ROBOT_SOURCEFILE})
 target_link_directories(ROBOT_LIB PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/lib)
 target_link_libraries(ROBOT_LIB jsoncpp osqp qdldl tinyxml2 ${TORCH_LIBRARIES})
+ament_target_dependencies(ROBOT_LIB rclcpp message geometry_msgs nav_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs visualization_msgs OpenCV)
 
 add_executable(sim_node src/sim_map_node.cc)
-target_link_libraries(sim_node ROBOT_LIB)
-ament_target_dependencies(sim_node rclcpp std_msgs message)
+target_link_directories(sim_node PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/lib)
+target_link_libraries(sim_node jsoncpp osqp qdldl tinyxml2 ROBOT_LIB ${TORCH_LIBRARIES})
+ament_target_dependencies(sim_node rclcpp message geometry_msgs nav_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs visualization_msgs OpenCV)
 
 add_executable(robot_node src/robot_node.cc)
 target_link_directories(robot_node PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/lib)
 target_link_libraries(robot_node jsoncpp osqp qdldl tinyxml2 ROBOT_LIB ${TORCH_LIBRARIES})
-ament_target_dependencies(robot_node rclcpp std_msgs message)
+ament_target_dependencies(robot_node rclcpp message geometry_msgs nav_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs visualization_msgs OpenCV)
 
 install(TARGETS 
   sim_node
@@ -68,6 +77,12 @@ install(
   ${INSTALL_LIB}
   DESTINATION 
   lib
+)
+# Install launch files.
+install(DIRECTORY
+  launch
+  config
+  DESTINATION share/${PROJECT_NAME}/
 )
 
 if(BUILD_TESTING)

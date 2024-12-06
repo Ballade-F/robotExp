@@ -1,5 +1,7 @@
 #include "robot.hpp"
 
+#include <sstream>
+
 Robot::Robot(uint8_t robot_id_, std::shared_ptr<Map_2D> map_, std::shared_ptr<MPC> mpc_, 
              std::shared_ptr<HybridAStar> astar_, std::shared_ptr<HybridAStar> astar_dist_, std::shared_ptr<Network> network_ptr_)
         : robot_id(robot_id_), map_ptr(map_), mpc_ptr(mpc_), astar_ptr(astar_), 
@@ -119,6 +121,7 @@ void Robot::keyframeUpdate()
     if(!start_flag && robot_states_keyframe.size() == ROBOT_BUFFER_SIZE)
     {
         start_flag = true;
+        RCLCPP_INFO(rclcpp::get_logger("robot_logger"), "robot_id: %d, start_flag: true", robot_id);
     }
 }
 
@@ -254,6 +257,10 @@ void Robot::_get_intention(void)
 {
     IntentionResult _result = network_ptr->getIntention(robot_states_keyframe, task_states, task_finished);
     robot_intention = _result.intention_id;
+    //DEBUG
+    std::stringstream ss;
+    ss << robot_intention;
+    RCLCPP_INFO(rclcpp::get_logger("robot_logger"), "robot_id: %d, intention: %s", robot_id, ss.str().c_str());
 }
 
 void Robot::_get_allocation(void)

@@ -4,8 +4,8 @@
 RobotNode::RobotNode(): Node("robot_node")
 {
     //读取配置信息
-    this->declare_parameter("map_dir","");
-    this->declare_parameter("robot_json_path","");
+    this->declare_parameter("map_dir","/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_0");
+    this->declare_parameter("robot_json_path","/home/jxl3028/Desktop/wzr/robotExp/src/config/robot/robot_0.json");
     string map_dir = this->get_parameter("map_dir").as_string();
     string robot_json_path = this->get_parameter("robot_json_path").as_string();
     string map_csv_path = map_dir + "/info.csv";
@@ -17,23 +17,27 @@ RobotNode::RobotNode(): Node("robot_node")
     Json::Value robot_root;
     // 读取 map.json 文件
     std::ifstream map_file(map_json_path, std::ifstream::binary);
-    if (!map_file.is_open()) {
-        std::cerr << "can not open file:" << map_json_path << std::endl;
+    if (!map_file.is_open()) 
+    {
+        RCLCPP_INFO(this->get_logger(), "can not open file: %s", map_json_path.c_str());
         return ;
     }
-    if (!reader.parse(map_file, map_root, false)) {
-        std::cerr << "解析文件失败: " << map_json_path << std::endl;
+    if (!reader.parse(map_file, map_root, false)) 
+    {
+        RCLCPP_INFO(this->get_logger(), "parse file failed: %s", map_json_path.c_str());
         return ;
     }
     map_file.close();
     // 读取 robot.json 文件
     std::ifstream robot_file(robot_json_path, std::ifstream::binary);
-    if (!robot_file.is_open()) {
-        std::cerr << "无法打开文件: " << robot_json_path << std::endl;
+    if (!robot_file.is_open()) 
+    {
+        RCLCPP_INFO(this->get_logger(), "can not open file: %s", robot_json_path.c_str());
         return ;
     }
-    if (!reader.parse(robot_file, robot_root, false)) {
-        std::cerr << "解析文件失败: " << robot_json_path << std::endl;
+    if (!reader.parse(robot_file, robot_root, false)) 
+    {
+        RCLCPP_INFO(this->get_logger(), "parse file failed: %s", robot_json_path.c_str());
         return ;
     }
     robot_file.close();
@@ -42,7 +46,7 @@ RobotNode::RobotNode(): Node("robot_node")
     map_Nrobot = map_root["n_robot"].asInt();
     map_Ntask = map_root["n_task"].asInt();
     map_Nobstacle = map_root["n_obstacle"].asInt();
-    map_ob_points = map_root["ob_point"].asInt();
+    map_ob_points = map_root["ob_points"].asInt();
     map_Nx = map_root["n_x"].asInt();
     map_Ny = map_root["n_y"].asInt();
     map_resolution_x = map_root["resolution_x"].asDouble();
@@ -55,6 +59,7 @@ RobotNode::RobotNode(): Node("robot_node")
     planner_Wmax = robot_root["planner_Wmax"].asDouble();
     planner_Vstep = robot_root["planner_Vstep"].asInt();
     planner_Wstep = robot_root["planner_Wstep"].asInt();
+    planner_TraceStep = robot_root["planner_TraceStep"].asInt();
     planner_dt = robot_root["planner_dt"].asDouble();
     planner_Rfinish = robot_root["planner_Rfinish"].asDouble();
     //mpc
@@ -86,9 +91,9 @@ RobotNode::RobotNode(): Node("robot_node")
     Vector3d resolution(map_resolution_x, map_resolution_y, 2*M_PI/planner_Ntheta);
     Vector3i grid_size(map_Nx, map_Ny, planner_Ntheta);
     hybrid_astar_p->init(resolution, grid_size, map_p->grid_map, planner_Vmax, planner_Wmax, 
-                             planner_Vstep, planner_Wstep, planner_dt, planner_Rfinish, true);
+                             planner_Vstep, planner_Wstep,planner_TraceStep, planner_dt, planner_Rfinish, true);
     hybrid_dist_astar_p->init(resolution, grid_size, map_p->grid_map, planner_Vmax, planner_Wmax,
-                                  planner_Vstep, planner_Wstep, planner_dt, planner_Rfinish, false);
+                                  planner_Vstep, planner_Wstep,planner_TraceStep, planner_dt, planner_Rfinish, false);
     
     //mpc
     Eigen::MatrixXd Q(3, 3);
@@ -111,6 +116,10 @@ RobotNode::RobotNode(): Node("robot_node")
     network_p = std::make_shared<Network>(x_max, y_max, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points, ROBOT_BUFFER_SIZE,
                                           allocation_model_path, intention_model_path, device_string, map_csv_path);
 
+    robot_states.resize(map_Nrobot, Vector3d::Zero());
+	task_states.resize(map_Ntask, Vector3d::Zero());
+	task_finished.resize(map_Ntask, 0);
+    
     //robot
     robot_p = std::make_shared<Robot>(robot_id, map_p, mpc_p, hybrid_astar_p, hybrid_dist_astar_p, network_p);
 
@@ -122,6 +131,8 @@ RobotNode::RobotNode(): Node("robot_node")
 
     timer_ctrl = this->create_wall_timer(
                 ROBOT_CONTROL_PERIOD, std::bind(&RobotNode::ctrl_timer_callback, this));
+    timer_keyframe = this->create_wall_timer(
+                ROBOT_KEYFRAME_PERIOD, std::bind(&RobotNode::keyframe_timer_callback, this));
     // //回调组，不可重入
     // cb_group_decision = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
     // timer_decision = this->create_wall_timer(
@@ -194,7 +205,6 @@ int main(int argc, char * argv[])
 void RobotNode::csv2vector(const string& csv_path, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point)
 {
     obstacles_.clear();
-    obstacles_.resize(n_obstacle);
     for(int i = 0; i < n_obstacle; i++)
     {
         vector<Vector2d> obstacle(ob_point, Vector2d::Zero());
@@ -216,8 +226,8 @@ void RobotNode::csv2vector(const string& csv_path, vector<vector<Vector2d>>& obs
         {
             int idx_ob = std::stoi(row[0]) - 1;
             int idx_point = (idx - n_robot - n_task - 1) - idx_ob * ob_point;
-            obstacles_[idx_ob][idx_point][0] = std::stof(row[1]);
-            obstacles_[idx_ob][idx_point][1] = std::stof(row[2]);
+            obstacles_[idx_ob][idx_point][0] = std::stof(row[1]) * map_resolution_x * map_Nx;
+            obstacles_[idx_ob][idx_point][1] = std::stof(row[2]) * map_resolution_y * map_Ny;
         }
         idx++;
     }

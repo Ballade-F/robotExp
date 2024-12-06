@@ -1,10 +1,25 @@
 {
     "robot_id": 0,
+
+    "planner_Ntheta": 16,
+    "planner_Vmax": 0.3,
+    "planner_Wmax": 0.7853982,
+    "planner_Vstep": 2,
+    "planner_Wstep": 2,
+    "planner_TraceStep": 5,
+    "planner_dt": 0.5,
+    "planner_Rfinish": 0.2,
+
+    "mpc_N": 10,
+    "mpc_dt": 0.1,
+    "mpc_Qxy": 10,
+    "mpc_Qtheta": 1,
+    "mpc_Rv": 1,
+    "mpc_Rw": 0.1,
+    "mpc_wheel_width": 0.238,
+    "mpc_wheel_Vmax": 0.4,
+
     "device" : "cpu",
-    "robot_r" : 0.2,
-    "buffer_size": 5,
-    "ctrl_period": 0.1,
-    "decision_period": 0.5,
-    "intention_model_dir" : "/home/zj/Desktop/wzr/robotExp/src/net_model/intention/intention.pt",
-    "allocation_model_dir" : "/home/zj/Desktop/wzr/robotExp/src/net_model/allocation/allocation.pt"
+    "intention_model_path" : "/home/jxl3028/Desktop/wzr/robotExp/src/config/net_model/intention/intention_model.pt",
+    "allocation_model_path" : "/home/jxl3028/Desktop/wzr/robotExp/src/config/net_model/allocation/allocation_model.pt"
 }

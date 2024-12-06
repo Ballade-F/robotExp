@@ -1,8 +1,10 @@
 #include "network.hpp"
 
-Network::Network(double x_max_, double y_max, int n_robot_, int n_task_, int n_obstacle_, int ob_point_, int r_point_,
+Network::Network(double x_max_, double y_max_, int n_robot_, int n_task_, int n_obstacle_, int ob_point_, int r_point_,
             string allocation_model_path_, string intention_model_path_, string device_string_, string map_csv_path_)
 {
+    x_max = x_max_;
+    y_max = y_max_;
     n_robot = n_robot_;
     n_task = n_task_;
     n_obstacle = n_obstacle_;
@@ -54,7 +56,7 @@ Network::Network(double x_max_, double y_max, int n_robot_, int n_task_, int n_o
     //config
     if (allocation_model.find_method("config_script"))
     {
-        allocation_model.run_method("config_script",n_robot, n_task, n_obstacle, ob_point, batch_size, device_string);
+        allocation_model.run_method("config_script",n_robot, n_task, n_obstacle, batch_size, ob_point, device_string);
     }
     else
     {
@@ -63,7 +65,7 @@ Network::Network(double x_max_, double y_max, int n_robot_, int n_task_, int n_o
 
     if (intention_model.find_method("config_script"))
     {
-        intention_model.run_method("config_script",n_robot, n_task, n_obstacle, ob_point, batch_size);
+        intention_model.run_method("config_script",n_robot, n_task, n_obstacle, batch_size, ob_point);
     }
     else
     {
@@ -164,7 +166,12 @@ const AllocationResult& Network::getAllocation(const vector<Vector3d> &robot_sta
     }
 
     //forward
-    allocation_model.run_method("config_script",valid_robot_num, valid_task_num, n_obstacle, ob_point, batch_size, device_string);
+    // //debug
+    cout << robot_tensor << endl;
+    cout << task_tensor << endl;
+    cout << obstacles << endl;
+    cout << valid_robot_num << " " << valid_task_num << endl;
+    allocation_model.run_method("config_script",valid_robot_num, valid_task_num, n_obstacle, batch_size, ob_point, device_string);
     allocation_inputs.clear();
     allocation_inputs.push_back(robot_tensor.to(device));
     allocation_inputs.push_back(task_tensor.to(device));
@@ -233,7 +240,7 @@ const IntentionResult& Network::getIntention(const RingBuffer<vector<Vector3d>> 
     intention_inputs.push_back(robot_tensor.to(device));
     intention_inputs.push_back(task_tensor.to(device));
     intention_inputs.push_back(obstacles.to(device));
-    // intention_inputs.push_back(torch::tensor(false).to(device));
+    intention_inputs.push_back(torch::tensor(false).to(device));
 
     auto start_time = std::chrono::high_resolution_clock::now();
     auto output = intention_model.forward(intention_inputs).toTensor();//(batch, n_robot, task_net_num)

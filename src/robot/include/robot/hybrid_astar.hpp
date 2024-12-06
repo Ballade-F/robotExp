@@ -121,8 +121,8 @@ public:
             delete node;
         }
     }
-    void init(Vector3d resolution, Vector3i grid_size, uint8_t* grid_map, double max_v = 1.0, double max_w = 1.0, int step_v = 1, int step_w = 1, 
-                int trace_step_ = 5, double dt = 0.1, double finish_radius = 0.1, bool path_flag_ = true);
+    void init(Vector3d resolution, Vector3i grid_size, uint8_t* grid_map, double max_v, double max_w, int step_v, int step_w, 
+                int trace_step_, double dt, double finish_radius, bool path_flag_ = true);
 
     PlanResult& plan(Vector3d start, Vector3d goal);
 

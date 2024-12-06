@@ -11,6 +11,8 @@
 #include "hybrid_astar.hpp"
 #include "ring_buffer.hpp"
 
+#include "rclcpp/rclcpp.hpp"
+
 
 
 using namespace std;

@@ -24,6 +24,7 @@ public:
     int n_obstacles; // 障碍物数量
     int n_ob_points; // 障碍物顶点数
 
+    //实际坐标
     vector<Vector3d> starts; // 起点, x, y, theta
     vector<Vector3d> tasks; // 任务, x, y, theta 但是theta不用
     vector<uint8_t> task_status; // 任务状态, 1为已完成

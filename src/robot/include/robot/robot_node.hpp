@@ -45,6 +45,7 @@ public:
     double planner_Wmax;
     int planner_Vstep;
     int planner_Wstep;
+    int planner_TraceStep;
     double planner_dt;
     double planner_Rfinish;
     //mpc
