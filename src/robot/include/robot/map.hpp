@@ -31,7 +31,7 @@ public:
     vector<vector<Vector2d>> obstacles; // 障碍物
 
     //栅格地图
-    uint8_t* grid_map; // 0:可通行, 1:障碍物, [x * n_y + y]
+    uint8_t* grid_map; // 0:可通行, 1:障碍物, [y * n_x + x]
 
     ~Map_2D()
     {

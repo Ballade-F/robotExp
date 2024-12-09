@@ -27,7 +27,7 @@ class Robot
     public:
 //感知
     std::shared_ptr<Map_2D> map_ptr;
-    uint8_t robot_id;
+    int robot_id;
     int robot_num;
     int task_num;
     vector<Vector3d> robot_states;//各个机器人当前的状态 x, y, theta
@@ -37,9 +37,11 @@ class Robot
     RingBuffer<vector<Vector3d>> robot_states_keyframe;
 
     bool start_flag = false;//开始标志,第一次感知到环境时设置为true
+    bool decision_flag = false;//决策标志,第一次可以决策时设置为true
 
 //决策
     vector<int> robot_intention;//-2表示未知, -1表示无任务
+    vector<int> robot_intention_last;//上一次的意图
     vector<int> pre_allocation;//-2表示不管, -1表示无任务
     vector<int> target_list;
     std::shared_ptr<Network> network_ptr;
@@ -56,7 +58,7 @@ class Robot
     Vector2d self_ctrl;
     bool stop_flag = true;
 
-    Robot(uint8_t robot_id_, std::shared_ptr<Map_2D> map_, std::shared_ptr<MPC> mpc_, 
+    Robot(int robot_id_, std::shared_ptr<Map_2D> map_, std::shared_ptr<MPC> mpc_, 
           std::shared_ptr<HybridAStar> astar_, std::shared_ptr<HybridAStar> astar_dist_, std::shared_ptr<Network> network_ptr_);
     void pncUpdate();
     void perceptionUpdate(const vector<Vector3d>& robot_states_, const vector<Vector3d>& task_states_, 

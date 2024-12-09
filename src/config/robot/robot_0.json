@@ -14,8 +14,8 @@
     "mpc_dt": 0.1,
     "mpc_Qxy": 10,
     "mpc_Qtheta": 1,
-    "mpc_Rv": 1,
-    "mpc_Rw": 0.1,
+    "mpc_Rv": 2,
+    "mpc_Rw": 0.3,
     "mpc_wheel_width": 0.238,
     "mpc_wheel_Vmax": 0.4,
 

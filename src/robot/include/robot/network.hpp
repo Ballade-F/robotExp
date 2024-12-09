@@ -41,6 +41,8 @@ public:
     int r_point;
     double x_max;
     double y_max;
+    double v_x_max;
+    double v_y_max;
     string allocation_model_path;
     string intention_model_path;
 
@@ -51,6 +53,7 @@ public:
     vector<torch::jit::IValue> allocation_inputs;
     vector<torch::jit::IValue> intention_inputs;
     torch::Tensor obstacles;
+    torch::Tensor obstacles_net;
     // vector<vector<Vector2d>> obstacles;
 
     //调试
@@ -61,7 +64,7 @@ public:
     AllocationResult allocation_result;
 
 
-    Network(double x_max_, double y_max_, int n_robot_, int n_task_, int n_obstacle_, int ob_point_, int r_point_,
+    Network(double x_max_, double y_max_, double v_x_max_, double v_y_max_, int n_robot_, int n_task_, int n_obstacle_, int ob_point_, int r_point_,
             string allocation_model_path_, string intention_model_path_, string device_string_, string map_csv_path_);
 
     const AllocationResult& getAllocation(const vector<Vector3d>& robot_states_, const vector<Vector3d>& task_states_, 

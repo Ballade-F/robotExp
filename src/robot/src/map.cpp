@@ -84,7 +84,7 @@ void Map_2D::input_map(const vector<Vector3d> &starts_, const vector<Vector3d> &
                 int x2 = intersections[j + 1].x();
                 for (int x = x1; x < x2; x++)
                 {
-                    grid_map[x*n_y + y] = 1;
+                    grid_map[y*n_x + x] = 1;
                 }
             }
         }

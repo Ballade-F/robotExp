@@ -113,7 +113,7 @@ SimServer::SimServer(const vector<Vector3d> &start_, const vector<Vector3d> &tas
 	{
 		for (int j = 0; j < map_Ny; ++j)
 		{
-			occupancy_grid_msg->data[i*map_Ny + j ] = static_cast<int8_t>(map_ptr->grid_map[i*map_Ny + j])*100;
+			occupancy_grid_msg->data[j*map_Nx + i ] = static_cast<int8_t>(map_ptr->grid_map[j*map_Nx + i])*100;
 		}
 	}
 
@@ -142,7 +142,7 @@ void SimServer::updateStates()
 		}
 		else
 		{
-			break;
+			continue;
 		}
 		Vector3d state = robot_states[i];
 		Vector2d ctrl = robot_ctrls[i];
@@ -179,7 +179,7 @@ int main(int argc, char * argv[])
     starts.push_back(Vector3d(1.0, 1.0, 0.0));
 	starts.push_back(Vector3d(1.0, 9.0, 0.0));
     vector<Vector3d> tasks;
-	tasks.push_back(Vector3d(5.0, 5.0, 0.0));
+	tasks.push_back(Vector3d(5.0, 3.0, 0.0));
 	tasks.push_back(Vector3d(9.0, 1.0, 0.0));
     tasks.push_back(Vector3d(9.0, 9.0, 0.0));
 

@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-Robot::Robot(uint8_t robot_id_, std::shared_ptr<Map_2D> map_, std::shared_ptr<MPC> mpc_, 
+Robot::Robot(int robot_id_, std::shared_ptr<Map_2D> map_, std::shared_ptr<MPC> mpc_, 
              std::shared_ptr<HybridAStar> astar_, std::shared_ptr<HybridAStar> astar_dist_, std::shared_ptr<Network> network_ptr_)
         : robot_id(robot_id_), map_ptr(map_), mpc_ptr(mpc_), astar_ptr(astar_), 
           astar_dist_ptr(astar_dist_), network_ptr(network_ptr_), robot_states_keyframe(ROBOT_BUFFER_SIZE)
@@ -13,6 +13,7 @@ Robot::Robot(uint8_t robot_id_, std::shared_ptr<Map_2D> map_, std::shared_ptr<MP
     task_states.resize(task_num, Vector3d::Zero());
     task_finished.resize(task_num, 0);
     robot_intention.resize(robot_num, -2);//-2表示未知, -1表示无任务
+    robot_intention_last.resize(robot_num, -2);//-2表示未知, -1表示无任务
     pre_allocation.resize(robot_num, -2);//-2表示不管, -1表示无任务
     target_list.reserve(task_num);
     self_ctrl = Vector2d::Zero();
@@ -27,6 +28,7 @@ void Robot::pncUpdate()
     if (perception_counter > perception_max)
     {
         stop_flag = true;
+        cout << "robot_id: " << robot_id << " perception lost!" << endl;
     }
     perception_counter++;
 
@@ -34,6 +36,7 @@ void Robot::pncUpdate()
     {
         replan_flag = false;
         stop_flag = true;
+        cout << "robot_id: " << robot_id << " pnc, target_list is empty!" << endl;
     }
 
     if (replan_flag)
@@ -54,10 +57,12 @@ void Robot::pncUpdate()
             mpc_ptr->setTrackReference(x_ref, y_ref, theta_ref, v_ref, w_ref);
             replan_flag = false;
             stop_flag = false;
+            cout << "robot_id: " << robot_id << " path plan success!" << endl;
         }
         else
         {
             stop_flag = true;
+            cout << "robot_id: " << robot_id << " path plan failed!" << endl;
         }
         
     }
@@ -71,6 +76,7 @@ void Robot::pncUpdate()
         if (done)
         {
             stop_flag = true;
+            cout << "robot_id: " << robot_id << " mpc finish!" << endl;
             control = VectorXd::Zero(2);
         }
         self_ctrl(0) = control(0);
@@ -98,17 +104,14 @@ void Robot::perceptionUpdate(const vector<Vector3d> &robot_states_, const vector
         {
             target_list.erase(target_list.begin());
             replan_flag = true;
+            cout << "robot_id: " << robot_id << " task_id: " << target_id << " finished, replan!" << endl;
         }
         else
         {
             break;
         }
     }
-    if (target_list.size() == 0)
-    {
-        replan_flag = false;
-        stop_flag = true;
-    }
+
 }
 
 void Robot::keyframeUpdate()
@@ -118,10 +121,17 @@ void Robot::keyframeUpdate()
         return;
     }
     robot_states_keyframe.push(robot_states);
-    if(!start_flag && robot_states_keyframe.size() == ROBOT_BUFFER_SIZE)
+    if(!start_flag )
     {
         start_flag = true;
+        stop_flag = false;
+        replan_flag = true;
         RCLCPP_INFO(rclcpp::get_logger("robot_logger"), "robot_id: %d, start_flag: true", robot_id);
+    }
+    if(!decision_flag && robot_states_keyframe.size() == ROBOT_BUFFER_SIZE)
+    {
+        decision_flag = true;
+        RCLCPP_INFO(rclcpp::get_logger("robot_logger"), "robot_id: %d, decision_flag: true", robot_id);
     }
 }
 
@@ -131,12 +141,25 @@ void Robot::decisionUpdate()
     {
         return;
     }
-    if (!start_flag && robot_states_keyframe.size()>0)
+    if (!decision_flag && start_flag)
     {
         _get_allocation();
+        if (target_list.size() == 0)
+        {
+            stop_flag = true;
+            replan_flag = false;
+            cout << "robot_id: " << robot_id << " pre_dicision, target_list is empty, stop!" << endl;
+        }
+        else
+        {
+            stop_flag = false;
+            replan_flag = true;
+            cout << "robot_id: " << robot_id << " pre_dicision, target_list is not empty, replan!" << endl;
+        }
         return;
     }
 
+    bool reallocation_flag = false;
     //intention
     _get_intention();
     //如果检测到机器人停车，修改pre_allocation给决策用
@@ -145,18 +168,27 @@ void Robot::decisionUpdate()
         if(robot_intention[i] == -1)
         {
             pre_allocation[i] = -1;
+            //如果上次没停车，就重新分配
+            if(robot_intention_last[i] != -1)
+            {
+                reallocation_flag = true;
+                cout << "robot_id: " << robot_id << " detect robot "<< i << " stop, reallocation!" << endl;
+            }
         }
         else
         {
             pre_allocation[i] = -2;
         }
     }
+    robot_intention_last = robot_intention;
+    //自己的pre_allocation是-2
+    pre_allocation[robot_id] = -2;
     //allocation
-    bool reallocation_flag = false;
     //任务列表为空或者任务列表中有任务被完成
     if (target_list.size() == 0)
     {
         reallocation_flag = true;
+        cout << "robot_id: " << robot_id << " target_list is empty, reallocation!" << endl;
     }
     else
     {
@@ -165,6 +197,7 @@ void Robot::decisionUpdate()
             if (task_finished[target_list[i]] == 1)
             {
                 reallocation_flag = true;
+                cout << "robot_id: " << robot_id << " task_id: " << target_list[i] << " finished by accident, reallocation!" << endl;
                 break;
             }
         }
@@ -176,6 +209,7 @@ void Robot::decisionUpdate()
         {
             stop_flag = true;
             replan_flag = false;
+            cout << "robot_id: " << robot_id << " reallocation, target_list is empty, stop!" << endl;
             return;
         }
     }
@@ -198,6 +232,7 @@ void Robot::decisionUpdate()
             //意图相同
             if(robot_intention[i] == target_list[0])
             {
+                cout << "self_id: " << robot_id << "has same intention with other_id: " << i << endl;
                 _task_id = target_list[0];
                 //计算各自的代价
                 PlanResult& plan_result_other = astar_dist_ptr->plan(robot_states[i], task_states[_task_id]);
@@ -230,6 +265,7 @@ void Robot::decisionUpdate()
         //冲突消解
         else
         {
+            cout << "self_id: " << robot_id << " conflict with other_id: " << _robot_conflict_id << endl;
             reallocation_flag = true;
             pre_allocation[_robot_conflict_id] = _task_id;//让出任务
             _get_allocation();
@@ -237,6 +273,7 @@ void Robot::decisionUpdate()
             {
                 stop_flag = true;
                 replan_flag = false;
+                cout << "robot_id: " << robot_id << " conflict resolution, target_list is empty, stop!" << endl;
                 return;
             }
         }
@@ -244,6 +281,7 @@ void Robot::decisionUpdate()
     if (reallocation_flag)
     {
         replan_flag = true;
+        cout << "robot_id: " << robot_id << " reallocation! replan!" << endl;
     }
 }
 
@@ -265,6 +303,19 @@ void Robot::_get_intention(void)
 
 void Robot::_get_allocation(void)
 {
-    AllocationResult _result = network_ptr->getAllocation(robot_states, task_states, task_finished, pre_allocation);
+    //将自己换到0号位置
+    vector<Vector3d> robot_states_allo(robot_states);
+    Vector3d temp = robot_states_allo[0];
+    robot_states_allo[0] = robot_states_allo[robot_id];
+    robot_states_allo[robot_id] = temp;
+    vector<int> pre_allocation_allo(pre_allocation);
+    pre_allocation_allo[robot_id] = pre_allocation[0];
+    pre_allocation_allo[0] = -2;//自己的pre_allocation是-2
+
+    AllocationResult _result = network_ptr->getAllocation(robot_states_allo, task_states, task_finished, pre_allocation_allo);
     target_list = _result.allocation;
+    //DEBUG
+    std::stringstream ss;
+    ss << target_list;
+    RCLCPP_INFO(rclcpp::get_logger("robot_logger"), "robot_id: %d, target_list: %s", robot_id, ss.str().c_str());
 }

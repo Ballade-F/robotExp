@@ -158,7 +158,7 @@ public:
         // }
         Vector3i index = Vector3i(state[0]/resolution[0],state[1]/resolution[1],state[2]/resolution[2]);
         index = index.cwiseMin(grid_size - Vector3i(1, 1, 1)).cwiseMax(Vector3i(0, 0, 0));
-        return index[0]*grid_size[1] + index[1];
+        return index[1]*grid_size[0] + index[0];
     }
 
     inline bool isCollision(Vector3d state)

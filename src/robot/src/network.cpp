@@ -1,10 +1,12 @@
 #include "network.hpp"
 
-Network::Network(double x_max_, double y_max_, int n_robot_, int n_task_, int n_obstacle_, int ob_point_, int r_point_,
+Network::Network(double x_max_, double y_max_, double v_x_max_, double v_y_max_, int n_robot_, int n_task_, int n_obstacle_, int ob_point_, int r_point_,
             string allocation_model_path_, string intention_model_path_, string device_string_, string map_csv_path_)
 {
     x_max = x_max_;
     y_max = y_max_;
+    v_x_max = v_x_max_;
+    v_y_max = v_y_max_;
     n_robot = n_robot_;
     n_task = n_task_;
     n_obstacle = n_obstacle_;
@@ -105,6 +107,17 @@ Network::Network(double x_max_, double y_max_, int n_robot_, int n_task_, int n_
         idx++;
     }
     csvfile.close();
+    //找ob均值
+    auto ob_point_mean = torch::mean(obstacles, {2}, true);//(batch, n_obstacle, 1, 2)
+    //找ob最大值和最小值
+    auto ob_point_max = std::get<0>(torch::max(obstacles, {2}, true));//(batch, n_obstacle, 1, 2)
+    auto ob_point_min = std::get<0>(torch::min(obstacles, {2}, true));//(batch, n_obstacle, 1, 2)
+    auto ob_delta = ob_point_max - ob_point_min;
+    //将obstacles归一化至-1~1
+    auto obstacles_norm = (obstacles - ob_point_min) / (ob_delta + 1e-6) * 2 - 1;
+    //拼接
+    obstacles_net = torch::cat({obstacles_norm, ob_point_mean, ob_delta}, 2);//(batch, n_obstacle, ob_point+2, 2)
+
 
 }
 
@@ -167,10 +180,10 @@ const AllocationResult& Network::getAllocation(const vector<Vector3d> &robot_sta
 
     //forward
     // //debug
-    cout << robot_tensor << endl;
-    cout << task_tensor << endl;
-    cout << obstacles << endl;
-    cout << valid_robot_num << " " << valid_task_num << endl;
+    // cout << robot_tensor << endl;
+    // cout << task_tensor << endl;
+    // cout << obstacles << endl;
+    cout << "valid: " << valid_robot_num << " " << valid_task_num << endl;
     allocation_model.run_method("config_script",valid_robot_num, valid_task_num, n_obstacle, batch_size, ob_point, device_string);
     allocation_inputs.clear();
     allocation_inputs.push_back(robot_tensor.to(device));
@@ -206,7 +219,7 @@ const AllocationResult& Network::getAllocation(const vector<Vector3d> &robot_sta
 
 }
 
-// x_r: (batch, n_robot,r_points, 2), x_t: (batch, self.n_task, 3), x_ob: (batch, n_obstacle, ob_points, 2)
+// x_r: (batch, n_robot,r_points+2, 2), x_t: (batch, self.n_task, 3), x_ob: (batch, n_obstacle, ob_points+2, 2)
 // robot_states_keyframe_: r_points, n_robot, 3
 const IntentionResult& Network::getIntention(const RingBuffer<vector<Vector3d>> &robot_states_keyframe_, const vector<Vector3d> &task_states_, const vector<uint8_t> &task_finished_)
 {
@@ -221,6 +234,30 @@ const IntentionResult& Network::getIntention(const RingBuffer<vector<Vector3d>> 
             robot_tensor[0][i][j][1] = robot_states_keyframe_[r_point-1-j][i][1] / y_max;
         }
     }
+    //找各个robot均值
+    auto robot_point_mean = torch::mean(robot_tensor, {2}, true);//(batch, n_robot, 1, 2)
+    //找各个robot平均速率
+    torch::Tensor robot_point_delta = torch::zeros({batch_size, n_robot, r_point-1, 2}, torch::kFloat32);
+    for (int i = 0; i < n_robot; i++)
+    {
+        for (int j = 0; j < r_point-1; j++)
+        {
+            robot_point_delta[0][i][j][0] = at::abs(robot_tensor[0][i][j+1][0] - robot_tensor[0][i][j][0]);
+            robot_point_delta[0][i][j][1] = at::abs(robot_tensor[0][i][j+1][1] - robot_tensor[0][i][j][1]);
+        }
+    }
+    auto robot_point_delta_mean = torch::mean(robot_point_delta, {2}, true);//(batch, n_robot, 1, 2)
+    // robot_point_delta_mean.select(-1,0) /= v_x_max;
+    // robot_point_delta_mean.select(-1,1) /= v_y_max;
+    //归一化至-1~1
+    auto robot_point_max = std::get<0>(torch::max(robot_tensor, {2}, true));//(batch, n_robot, 1, 2)
+    auto robot_point_min = std::get<0>(torch::min(robot_tensor, {2}, true));//(batch, n_robot, 1, 2)
+    auto robot_point_norm = (robot_tensor - robot_point_min) / (robot_point_max - robot_point_min + 1e-6) * 2 - 1;
+    //拼接
+    auto robot_tensor_net = torch::cat({robot_point_norm, robot_point_mean, robot_point_delta_mean}, 2);//(batch, n_robot, r_point+2, 2)
+
+    // //debug
+    // cout << robot_tensor_net << endl;
 
     //task tensor
     int task_net_num = n_task + 1;//最后一个是虚拟任务，表示停止，为-1, -1, 0
@@ -237,10 +274,10 @@ const IntentionResult& Network::getIntention(const RingBuffer<vector<Vector3d>> 
 
     //forward
     intention_inputs.clear();
-    intention_inputs.push_back(robot_tensor.to(device));
+    intention_inputs.push_back(robot_tensor_net.to(device));
     intention_inputs.push_back(task_tensor.to(device));
-    intention_inputs.push_back(obstacles.to(device));
-    intention_inputs.push_back(torch::tensor(false).to(device));
+    intention_inputs.push_back(obstacles_net.to(device));
+    // intention_inputs.push_back(torch::tensor(false).to(device));
 
     auto start_time = std::chrono::high_resolution_clock::now();
     auto output = intention_model.forward(intention_inputs).toTensor();//(batch, n_robot, task_net_num)
@@ -252,6 +289,9 @@ const IntentionResult& Network::getIntention(const RingBuffer<vector<Vector3d>> 
     auto output_max = output_softmax.max(2);//(batch, n_robot)， max返回的是值和索引
     auto output_max_id = std::get<1>(output_max);//(batch, n_robot)
     auto output_max_prob = std::get<0>(output_max);//(batch, n_robot)
+
+    //debug 
+    cout << "intention prob: \n" << output_softmax << endl;
 
     //output
     intention_result.intention_id.resize(n_robot);

@@ -111,9 +111,14 @@ RobotNode::RobotNode(): Node("robot_node")
     mpc_p->init(mpc_N, mpc_dt, mpc_wheel_Vmax, mpc_wheel_width, Q, R, Qf);
     
     //network
+    
     double x_max = map_Nx * map_resolution_x;
     double y_max = map_Ny * map_resolution_y;
-    network_p = std::make_shared<Network>(x_max, y_max, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points, ROBOT_BUFFER_SIZE,
+    double vx_max_network = planner_Vmax * ROBOT_KEYFRAME_PERIOD.count() / 1000 / x_max;
+    double vy_max_network = planner_Vmax * ROBOT_KEYFRAME_PERIOD.count() / 1000 / y_max;
+    //debug 
+    cout << "vx_max_network: " << vx_max_network << " vy_max_network: " << vy_max_network << endl;
+    network_p = std::make_shared<Network>(x_max, y_max, vx_max_network, vy_max_network, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points, ROBOT_BUFFER_SIZE,
                                           allocation_model_path, intention_model_path, device_string, map_csv_path);
 
     robot_states.resize(map_Nrobot, Vector3d::Zero());
