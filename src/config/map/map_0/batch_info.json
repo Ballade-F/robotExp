@@ -2,10 +2,10 @@
     "batch_size": 1,
     "n_robot": 2,
     "n_task": 3,
-    "n_obstacle": 1,
+    "n_obstacle": 5,
     "ob_points": 4,
-    "n_x": 100,
-    "n_y": 100,
-    "resolution_x": 0.1,
-    "resolution_y": 0.1
+    "n_x": 156,
+    "n_y": 156,
+    "resolution_x": 0.05,
+    "resolution_y": 0.05
 }

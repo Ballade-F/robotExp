@@ -138,17 +138,18 @@ RobotNode::RobotNode(): Node("robot_node")
                 ROBOT_CONTROL_PERIOD, std::bind(&RobotNode::ctrl_timer_callback, this));
     timer_keyframe = this->create_wall_timer(
                 ROBOT_KEYFRAME_PERIOD, std::bind(&RobotNode::keyframe_timer_callback, this));
-    // //回调组，不可重入
-    // cb_group_decision = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
-    // timer_decision = this->create_wall_timer(
-    //             ROBOT_DECISION_PERIOD, std::bind(&RobotNode::decision_timer_callback, this), cb_group_decision);
+    //回调组，不可重入
+    cb_group_decision = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
     timer_decision = this->create_wall_timer(
-                ROBOT_DECISION_PERIOD, std::bind(&RobotNode::decision_timer_callback, this));
+                ROBOT_DECISION_PERIOD, std::bind(&RobotNode::decision_timer_callback, this), cb_group_decision);
+    // timer_decision = this->create_wall_timer(
+    //             ROBOT_DECISION_PERIOD, std::bind(&RobotNode::decision_timer_callback, this));
 
 } 
 
 void RobotNode::ctrl_timer_callback()
 {
+    
     robot_p->pncUpdate();
     message::msg::RobotCtrl msg;
     msg.id = robot_id;
@@ -160,7 +161,12 @@ void RobotNode::ctrl_timer_callback()
 
 void RobotNode::decision_timer_callback()
 {
+    //测回调时间
+    auto start_time = std::chrono::high_resolution_clock::now();
     robot_p->decisionUpdate();
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> decision_time = end_time - start_time;
+    cout << "robot_id: " << robot_id << " decision_callback_time: " << decision_time.count() << endl;
     // //debug
     // RCLCPP_INFO(this->get_logger(), "robot_id: %d, target_list size: %d; state: %f, %f, %f; ctrl: %f, %f", 
     //             robot_id, target_list.size(), self_state(0), self_state(1), self_state(2), self_ctrl(0), self_ctrl(1));
@@ -200,7 +206,10 @@ int main(int argc, char * argv[])
     //ros2 node
     rclcpp::init(argc, argv);
     auto node = std::make_shared<RobotNode>();
-    rclcpp::spin(node);
+    rclcpp::executors::MultiThreadedExecutor executor;
+    executor.add_node(node);
+    // rclcpp::spin(node);
+    executor.spin();
     rclcpp::shutdown();
 
     return 0;

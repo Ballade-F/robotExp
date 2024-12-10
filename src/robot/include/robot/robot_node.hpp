@@ -83,7 +83,7 @@ public:
     rclcpp::TimerBase::SharedPtr timer_ctrl;
     rclcpp::TimerBase::SharedPtr timer_keyframe;
     //定时器
-    // rclcpp::CallbackGroup::SharedPtr cb_group_decision;
+    rclcpp::CallbackGroup::SharedPtr cb_group_decision;
     rclcpp::TimerBase::SharedPtr timer_decision;
 
     void ctrl_timer_callback();

@@ -276,7 +276,7 @@ const IntentionResult& Network::getIntention(const RingBuffer<vector<Vector3d>> 
     intention_inputs.clear();
     intention_inputs.push_back(robot_tensor_net.to(device));
     intention_inputs.push_back(task_tensor.to(device));
-    intention_inputs.push_back(obstacles.to(device));
+    intention_inputs.push_back(obstacles_net.to(device));
     // intention_inputs.push_back(torch::tensor(false).to(device));
 
     auto start_time = std::chrono::high_resolution_clock::now();

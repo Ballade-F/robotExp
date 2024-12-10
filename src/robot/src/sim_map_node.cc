@@ -177,11 +177,11 @@ int main(int argc, char * argv[])
 {
 	vector<Vector3d> starts;
     starts.push_back(Vector3d(1.0, 1.0, 0.0));
-	starts.push_back(Vector3d(1.0, 9.0, 0.0));
+	starts.push_back(Vector3d(1.0, 7.0, 0.0));
     vector<Vector3d> tasks;
-	tasks.push_back(Vector3d(5.0, 3.0, 0.0));
-	tasks.push_back(Vector3d(9.0, 1.0, 0.0));
-    tasks.push_back(Vector3d(9.0, 9.0, 0.0));
+	tasks.push_back(Vector3d(4.0, 2.0, 0.0));
+	tasks.push_back(Vector3d(7.0, 1.0, 0.0));
+    tasks.push_back(Vector3d(7.0, 7.0, 0.0));
 
 	rclcpp::init(argc, argv);
 	rclcpp::spin(std::make_shared<SimServer>(starts, tasks));
