@@ -2,7 +2,9 @@ from copy import deepcopy
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-
+import csv
+import os
+import json
 #obstacle generator parameters
 # ob_rmax_factor = 0.1
 # ob_rmin_factor = 0.06
@@ -115,15 +117,15 @@ class Map():
         start_ = start.copy()
         start_[:, 0] = start[:, 0] / (self.n_x*self.resolution_x)
         start_[:, 1] = start[:, 1] / (self.n_y*self.resolution_y)
-        start_[:, 0] = max(0, min(start_[:, 0], 1))
-        start_[:, 1] = max(0, min(start_[:, 1], 1))
+        start_ = np.maximum(start_, 0)
+        start_ = np.minimum(start_, 1)
         self.starts = start_
 
         tasks_ = tasks.copy()
         tasks_[:, 0] = tasks[:, 0] / (self.n_x*self.resolution_x)
         tasks_[:, 1] = tasks[:, 1] / (self.n_y*self.resolution_y)
-        tasks_[:, 0] = max(0, min(tasks_[:, 0], 1))
-        tasks_[:, 1] = max(0, min(tasks_[:, 1], 1))
+        tasks_ = np.maximum(tasks_, 0)
+        tasks_ = np.minimum(tasks_, 1)
         self.tasks = tasks_
 
         self.tasks_finish = [False for _ in range(self.n_tasks)]
@@ -151,38 +153,7 @@ class Map():
         self._obstacle2grid()
 
 
-    def setObstacleExp(self, rng:np.random.Generator):
-        # rng = np.random.default_rng(seed)
-        ob_len = 0.071
-        center_points = rng.uniform(0, 1, (self.n_obstacles, 2))
-        ob_theta = rng.uniform(0, 0.5*np.pi, (self.n_obstacles))
-        for i in range(self.n_obstacles):
-            ob_points = np.zeros((4, 2)) #正方形
-            for j in range(4):
-                ob_points[j, 0] = center_points[i, 0] + ob_len*np.cos(ob_theta[i]+j*np.pi/2)
-                ob_points[j, 1] = center_points[i, 1] + ob_len*np.sin(ob_theta[i]+j*np.pi/2)
-            ob_points = np.maximum(ob_points, 0)
-            ob_points = np.minimum(ob_points, 1)
-            self.obstacles.append(ob_points)
-
-        self._obstacle2grid()
-
-        while(True):
-            self.starts = rng.uniform(0, 1, (self.n_starts, 2))
-            self.tasks = rng.uniform(0, 1, (self.n_tasks, 2))
-            if True not in self._isObstacle(self.starts[:, 0], self.starts[:, 1])  and True not in self._isObstacle(self.tasks[:, 0], self.tasks[:, 1]) :
-                break
-
-        self.tasks_finish = [False for _ in range(self.n_tasks)]
-
-        self.starts_grid = np.zeros((self.n_starts, 2), dtype=int)
-        self.tasks_grid = np.zeros((self.n_tasks, 2), dtype=int)
-        self.starts_grid[:,0] = np.floor(self.starts[:,0]*self.n_x).astype(int)
-        self.starts_grid[:,1] = np.floor(self.starts[:,1]*self.n_y).astype(int)
-        self.tasks_grid[:,0] = np.floor(self.tasks[:,0]*self.n_x).astype(int)
-        self.tasks_grid[:,1] = np.floor(self.tasks[:,1]*self.n_y).astype(int)
-        
-        
+          
         
     # input: true coordinates(default) or norm coordinates, & id of task
     # if point and task are in the same grid, return True
@@ -245,11 +216,121 @@ class Map():
         #     ax.fill(ob_points[:, 0]*self.n_x, ob_points[:, 1]*self.n_y, 'r')
         plt.show()
 
+    def setObstacleExp(self, rng:np.random.Generator):
+        # rng = np.random.default_rng(seed)
+        ob_len = 0.071
+        center_points = rng.uniform(0, 1, (self.n_obstacles, 2))
+        ob_theta = rng.uniform(0, 0.5*np.pi, (self.n_obstacles))
+        for i in range(self.n_obstacles):
+            ob_points = np.zeros((4, 2)) #正方形
+            for j in range(4):
+                ob_points[j, 0] = center_points[i, 0] + ob_len*np.cos(ob_theta[i]+j*np.pi/2)
+                ob_points[j, 1] = center_points[i, 1] + ob_len*np.sin(ob_theta[i]+j*np.pi/2)
+            ob_points = np.maximum(ob_points, 0)
+            ob_points = np.minimum(ob_points, 1)
+            self.obstacles.append(ob_points)
+
+
+        self._obstacle2grid()
+
+        while(True):
+            self.starts = rng.uniform(0, 1, (self.n_starts, 2))
+            self.tasks = rng.uniform(0, 1, (self.n_tasks, 2))
+            if True not in self._isObstacle(self.starts[:, 0], self.starts[:, 1])  and True not in self._isObstacle(self.tasks[:, 0], self.tasks[:, 1]) :
+                break
+
+        # self.tasks_finish = [False for _ in range(self.n_tasks)]
+
+        # self.starts_grid = np.zeros((self.n_starts, 2), dtype=int)
+        # self.tasks_grid = np.zeros((self.n_tasks, 2), dtype=int)
+        # self.starts_grid[:,0] = np.floor(self.starts[:,0]*self.n_x).astype(int)
+        # self.starts_grid[:,1] = np.floor(self.starts[:,1]*self.n_y).astype(int)
+        # self.tasks_grid[:,0] = np.floor(self.tasks[:,0]*self.n_x).astype(int)
+        # self.tasks_grid[:,1] = np.floor(self.tasks[:,1]*self.n_y).astype(int)
+        
+  
+
+    #输入正方形障碍的中心点，角度，边长，起点，任务点，都是真实值
+    def setExp(self, center_points:np.ndarray, ob_theta:np.ndarray, ob_len:float, start:np.ndarray, tasks:np.ndarray):
+        len_slant = ob_len/np.sqrt(2)
+        for i in range(self.n_obstacles):
+            ob_points = np.zeros((4, 2)) #正方形的真实坐标
+            for j in range(4):
+                ob_points[j, 0] = center_points[i, 0] + len_slant*np.cos(ob_theta[i]+j*np.pi/2 + np.pi/4)
+                ob_points[j, 1] = center_points[i, 1] + len_slant*np.sin(ob_theta[i]+j*np.pi/2 + np.pi/4)
+            ob_points[:, 0] = ob_points[:, 0] / (self.n_x*self.resolution_x)
+            ob_points[:, 1] = ob_points[:, 1] / (self.n_y*self.resolution_y)
+            ob_points = np.maximum(ob_points, 0)
+            ob_points = np.minimum(ob_points, 1)
+            self.obstacles.append(ob_points)
+        self._obstacle2grid()
+        
+        start_ = start.copy()
+        start_[:, 0] = start[:, 0] / (self.n_x*self.resolution_x)
+        start_[:, 1] = start[:, 1] / (self.n_y*self.resolution_y)
+        start_ = np.maximum(start_, 0)
+        start_ = np.minimum(start_, 1)
+        self.starts = start_
+
+        tasks_ = tasks.copy()
+        tasks_[:, 0] = tasks[:, 0] / (self.n_x*self.resolution_x)
+        tasks_[:, 1] = tasks[:, 1] / (self.n_y*self.resolution_y)
+        tasks_ = np.maximum(tasks_, 0)
+        tasks_ = np.minimum(tasks_, 1)
+        self.tasks = tasks_
+        
+    def saveExpMap(self, file_dir:str):
+        os.makedirs(file_dir, exist_ok=True)
+        # Save map information to a JSON file
+        batch_info = {
+            "batch_size": 1,
+            "n_robot": self.n_starts,
+            "n_task": self.n_tasks,
+            "n_obstacle": self.n_obstacles,
+            "ob_points": 4,
+            "n_x": self.n_x,
+            "n_y": self.n_y,
+            "resolution_x": self.resolution_x,
+            "resolution_y": self.resolution_y
+        }
+        with open(os.path.join(file_dir, "batch_info.json"), "w") as json_file:
+            json.dump(batch_info, json_file, indent=4)
+            
+        # Save map information to a CSV file
+        with open(os.path.join(file_dir, f"info.csv"), "w", newline='') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(["Type", "x", "y"])
+            for start in map.starts:
+                writer.writerow([-1, start[0], start[1]])
+            for task in map.tasks:
+                writer.writerow([0, task[0], task[1]])
+            for ob_idx, ob in enumerate(map.obstacles):
+                for point in ob:
+                    writer.writerow([ob_idx+1, point[0], point[1]])
+
 if __name__ == '__main__':
-    map = Map(20, 2, 9, 156, 156, 0.05, 0.05,4)
-    rng = np.random.default_rng(2)
-    # map.setObstacleRandn(rng)
-    map.setObstacleExp(rng)
+    map = Map(10, 2, 5, 116, 116, 0.05, 0.05,4)
+    ob_center_grid = np.array(
+        [[3,3],[3,4],[7,2],[4,5],[9,5],
+         [1.5,6.5],[6.5,6.5],[4.5,8.5],[7,9],[8.5,8.5]], dtype=float)
+    ob_theta = np.zeros(10)
+    
+    # ob_center_grid = np.array([[3.0, 3.0]], dtype=float)
+    # ob_theta = np.array([0.0], dtype=float)
+    
+    ob_center_grid *= 0.58
+    
+    ob_len = 0.8
+    starts = np.array([[0.5, 0.5], [5.3, 0.5]])
+    tasks = np.array(
+        [[6.5, 4.5], [2.5, 5.5], [8.5, 6.5], [1.5, 9.5], [5.5, 9.5]])
+    tasks *= 0.58
+    map.setExp(ob_center_grid, ob_theta, ob_len, starts, tasks)
+    map.saveExpMap('/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_xep')
+    
+    # rng = np.random.default_rng(2)
+    # map.setObstacleExp(rng)
+
     map.plot()
     map.plotGrid()
 

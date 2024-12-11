@@ -1,7 +1,7 @@
-#include "robot_node.hpp"
+#include "robot_exp_node.hpp"
 
 
-RobotNode::RobotNode(): Node("robot_node")
+RobotExpNode::RobotExpNode(): Node("robot_exp_node")
 {
     //读取配置信息
     this->declare_parameter("map_dir","/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_0");
@@ -82,7 +82,9 @@ RobotNode::RobotNode(): Node("robot_node")
 	vector<Vector3d> starts(map_Nrobot, Vector3d::Zero());
     vector<Vector3d> tasks(map_Ntask, Vector3d::Zero());
     vector<vector<Vector2d>> obstacles;
-    csv2vector(map_csv_path, obstacles, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points);
+    vector<Vector3d> start_(map_Nrobot, Vector3d::Zero());
+    vector<Vector3d> task_(map_Ntask, Vector3d::Zero());
+    csv2vector(map_csv_path, start_,task_, obstacles, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points);
     map_p->input_map(starts, tasks, obstacles);
 
     //hybrid_astar
@@ -129,39 +131,44 @@ RobotNode::RobotNode(): Node("robot_node")
     robot_p = std::make_shared<Robot>(robot_id, map_p, mpc_p, hybrid_astar_p, hybrid_dist_astar_p, network_p);
 
     //ros2
-    publisher_ = this->create_publisher<message::msg::RobotCtrl>("robot_ctrl", 10);
-
+    publisher_ = this->create_publisher<uvs_message::msg::UvEmbKinetics>("uvs_emb_kinetics", 10);
+    //订阅机器人位姿与任务
     subscription_ = this->create_subscription<message::msg::EnvState>(
-                    "env_state", 10, std::bind(&RobotNode::env_callback, this, _1));
-
+                    "env_state", 10, std::bind(&RobotExpNode::env_callback, this, _1));
+    //订阅vw
+    subscription_status = this->create_subscription<uvs_message::msg::UvEmbStatus>(
+                    "uvs_emb_status", 10, std::bind(&RobotExpNode::status_callback, this, _1));
     timer_ctrl = this->create_wall_timer(
-                ROBOT_CONTROL_PERIOD, std::bind(&RobotNode::ctrl_timer_callback, this));
+                ROBOT_CONTROL_PERIOD, std::bind(&RobotExpNode::ctrl_timer_callback, this));
     timer_keyframe = this->create_wall_timer(
-                ROBOT_KEYFRAME_PERIOD, std::bind(&RobotNode::keyframe_timer_callback, this));
+                ROBOT_KEYFRAME_PERIOD, std::bind(&RobotExpNode::keyframe_timer_callback, this));
     //回调组，不可重入
     cb_group_decision = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
     timer_decision = this->create_wall_timer(
-                ROBOT_DECISION_PERIOD, std::bind(&RobotNode::decision_timer_callback, this), cb_group_decision);
+                ROBOT_DECISION_PERIOD, std::bind(&RobotExpNode::decision_timer_callback, this), cb_group_decision);
     // timer_decision = this->create_wall_timer(
     //             ROBOT_DECISION_PERIOD, std::bind(&RobotNode::decision_timer_callback, this));
 
 } 
 
-void RobotNode::ctrl_timer_callback()
+void RobotExpNode::ctrl_timer_callback()
 {
+    //轮速换算成速度角速度
+    Vector2d self_vw_;
+    self_vw_(0) = (self_speed(0) + self_speed(1))*0.5;
+    self_vw_(1) = (self_speed(1) - self_speed(0))/mpc_wheel_width;
+    robot_p->perceptionUpdate(robot_states, task_states, task_finished, self_vw_);
     
     robot_p->pncUpdate();
-    message::msg::RobotCtrl msg;
-    msg.id = robot_id;
+    uvs_message::msg::UvEmbKinetics msg;
+    // msg.id = robot_id;
     auto ctrl_ = robot_p->ctrlOutput();
     msg.v = ctrl_(0);
     msg.w = ctrl_(1);
     publisher_->publish(msg);
-    self_vw(0) = ctrl_(0);
-    self_vw(1) = ctrl_(1);
 }
 
-void RobotNode::decision_timer_callback()
+void RobotExpNode::decision_timer_callback()
 {
     //测回调时间
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -174,12 +181,12 @@ void RobotNode::decision_timer_callback()
     //             robot_id, target_list.size(), self_state(0), self_state(1), self_state(2), self_ctrl(0), self_ctrl(1));
 }
 
-void RobotNode::keyframe_timer_callback()
+void RobotExpNode::keyframe_timer_callback()
 {
     robot_p->keyframeUpdate();
 }
 
-void RobotNode::env_callback(const message::msg::EnvState::SharedPtr msg)
+void RobotExpNode::env_callback(const message::msg::EnvState::SharedPtr msg)
 {
     for (int i = 0; i < map_Nrobot; i++)
     {
@@ -194,31 +201,18 @@ void RobotNode::env_callback(const message::msg::EnvState::SharedPtr msg)
         task_states[i](2) = msg->task_list[i].pose.theta;
         task_finished[i] = msg->task_list[i].finished;
     }
-    robot_p->perceptionUpdate(robot_states, task_states, task_finished, self_vw);
-}
-
-
-
-
-
-int main(int argc, char * argv[])
-{
     
+}
 
-    //ros2 node
-    rclcpp::init(argc, argv);
-    auto node = std::make_shared<RobotNode>();
-    rclcpp::executors::MultiThreadedExecutor executor;
-    executor.add_node(node);
-    // rclcpp::spin(node);
-    executor.spin();
-    rclcpp::shutdown();
-
-    return 0;
+void RobotExpNode::status_callback(const uvs_message::msg::UvEmbStatus::SharedPtr msg)
+{
+    self_speed(0) = msg->left_wheel_speed;
+    self_speed(1) = msg->right_wheel_speed;
 }
 
 
-void RobotNode::csv2vector(const string& csv_path, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point)
+
+void RobotExpNode::csv2vector(const string& csv_path, vector<Vector3d>& starts_, vector<Vector3d>& tasks_, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point)
 {
     obstacles_.clear();
     for(int i = 0; i < n_obstacle; i++)
@@ -238,14 +232,44 @@ void RobotNode::csv2vector(const string& csv_path, vector<vector<Vector2d>>& obs
         {
             row.push_back(token);
         }
-        if(idx > n_robot+n_task && idx <= n_robot+n_task+n_obstacle*ob_point)
+		// RCLCPP_INFO(this->get_logger(), "CONDISION:%s", (idx > n_robot+n_task && idx <= n_robot+n_task+n_obstacle*ob_point)?"TRUE":"FALSE");
+        //表头
+        if(idx == 0)
+        {
+            continue;
+        }
+        else if(idx <= n_robot)
+        {
+            starts_[idx-1][0] = std::stof(row[1]) * map_resolution_x * map_Nx;
+            starts_[idx-1][1] = std::stof(row[2]) * map_resolution_y * map_Ny;
+        }
+        else if(idx <= n_robot+n_task)
+        {
+            tasks_[idx-n_robot-1][0] = std::stof(row[1]) * map_resolution_x * map_Nx;
+            tasks_[idx-n_robot-1][1] = std::stof(row[2]) * map_resolution_y * map_Ny;
+        }
+        else if(idx <= n_robot+n_task+n_obstacle*ob_point)
         {
             int idx_ob = std::stoi(row[0]) - 1;
             int idx_point = (idx - n_robot - n_task - 1) - idx_ob * ob_point;
             obstacles_[idx_ob][idx_point][0] = std::stof(row[1]) * map_resolution_x * map_Nx;
             obstacles_[idx_ob][idx_point][1] = std::stof(row[2]) * map_resolution_y * map_Ny;
+			RCLCPP_INFO(this->get_logger(), "obstacle: %d, point: %d, x: %f, y: %f", idx_ob, idx_point, obstacles_[idx_ob][idx_point][0], obstacles_[idx_ob][idx_point][1]);
         }
         idx++;
     }
     csvfile.close();
+}
+
+int main(int argc, char * argv[])
+{
+    //ros2 node
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<RobotExpNode>();
+    rclcpp::executors::MultiThreadedExecutor executor;
+    executor.add_node(node);
+    // rclcpp::spin(node);
+    executor.spin();
+    rclcpp::shutdown();
+    return 0;
 }

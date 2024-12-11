@@ -44,6 +44,12 @@ public:
     std::shared_ptr<Map_2D> map_ptr;
     double dt = 0.1;
     double finish_radius = 0.3;
+    int64_t time_count_ = 0;
+
+    double x_max = 10;
+    double y_max = 10;
+    double x_bias = 3.19;
+    double y_bias = 3.77;
 
     //rviz2
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr occupancy_grid_publisher_;
@@ -62,7 +68,7 @@ public:
     void timer_callback();
     void env_callback(const uvs_message::msg::UvOptPoseList::SharedPtr msg);
     
-    void csv2vector(const string& csv_path, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point);
+    void csv2vector(const string& csv_path, vector<Vector3d>& starts_, vector<Vector3d>& tasks_, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point);
 
     void publishOccupancyGrid();
     void publishRobotTaskStates();

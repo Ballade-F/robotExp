@@ -10,8 +10,8 @@
 #include "std_msgs/msg/string.hpp"
 #include "message/msg/env_state.hpp"
 #include "message/msg/robot_ctrl.hpp"
-#include "message/srv/robot_intention.hpp"
-#include "message/srv/robot_allocation.hpp"
+#include "uvs_message/msg/uv_emb_status.hpp"
+#include "uvs_message/msg/uv_emb_kinetics.hpp"
 
 #include "json/json.h"
 #include "robot.hpp"
@@ -26,7 +26,8 @@ using std::placeholders::_1;
 #define ROBOT_DECISION_PERIOD (2000ms)
 #define ROBOT_BUFFER_SIZE 5
 
-class RobotNode : public rclcpp::Node
+
+class RobotExpNode : public rclcpp::Node
 {
 public:
     int robot_id;
@@ -62,7 +63,7 @@ public:
     vector<Vector3d> robot_states;//各个机器人当前的状态 x, y, theta
     vector<Vector3d> task_states;//各个任务的位置 x, y, theta 但是theta不用
     vector<uint8_t> task_finished;//各个任务是否完成
-    Vector2d self_vw;
+    Vector2d self_speed;
 
     std::shared_ptr<Map_2D> map_p;
     std::shared_ptr<MPC> mpc_p;
@@ -72,14 +73,16 @@ public:
 
     std::shared_ptr<Robot> robot_p;
 
-    RobotNode();
+    RobotExpNode();
     // ~RobotNode();
 
 
     //订阅感知信息
     rclcpp::Subscription<message::msg::EnvState>::SharedPtr subscription_;
+    //订阅轮速
+    rclcpp::Subscription<uvs_message::msg::UvEmbStatus>::SharedPtr subscription_status;
     //发布控制信息
-    rclcpp::Publisher<message::msg::RobotCtrl>::SharedPtr publisher_;
+    rclcpp::Publisher<uvs_message::msg::UvEmbKinetics>::SharedPtr publisher_;
     //定时器 用于控制频率
     rclcpp::TimerBase::SharedPtr timer_ctrl;
     rclcpp::TimerBase::SharedPtr timer_keyframe;
@@ -91,10 +94,10 @@ public:
     void decision_timer_callback();
     void keyframe_timer_callback();
     void env_callback(const message::msg::EnvState::SharedPtr msg);
+    void status_callback(const uvs_message::msg::UvEmbStatus::SharedPtr msg);
 
 private:
-    void csv2vector(const string& csv_path, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point);
+    void csv2vector(const string& csv_path, vector<Vector3d>& starts_, vector<Vector3d>& tasks_, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point);
 
 
 };
-

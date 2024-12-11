@@ -24,6 +24,7 @@ find_package(OpenCV REQUIRED)
 # find_package(matplotlib_cpp REQUIRED)
 # find_package(Python3 COMPONENTS Development NumPy REQUIRED)
 find_package(message REQUIRED)
+find_package(uvs_message REQUIRED)
 set(Torch_DIR ${CMAKE_SOURCE_DIR}/thirdparty/libtorch/share/cmake/Torch) 
 find_package(Torch REQUIRED)
 
@@ -44,21 +45,34 @@ file(GLOB ROBOT_SOURCEFILE
 add_library(ROBOT_LIB STATIC ${ROBOT_SOURCEFILE})
 target_link_directories(ROBOT_LIB PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/lib)
 target_link_libraries(ROBOT_LIB jsoncpp osqp qdldl tinyxml2 ${TORCH_LIBRARIES})
-ament_target_dependencies(ROBOT_LIB rclcpp message geometry_msgs nav_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs visualization_msgs OpenCV)
+ament_target_dependencies(ROBOT_LIB rclcpp message uvs_message geometry_msgs nav_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs visualization_msgs OpenCV)
 
 add_executable(sim_node src/sim_map_node.cc)
 target_link_directories(sim_node PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/lib)
 target_link_libraries(sim_node jsoncpp osqp qdldl tinyxml2 ROBOT_LIB ${TORCH_LIBRARIES})
-ament_target_dependencies(sim_node rclcpp message geometry_msgs nav_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs visualization_msgs OpenCV)
+ament_target_dependencies(sim_node rclcpp message uvs_message geometry_msgs nav_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs visualization_msgs OpenCV)
 
 add_executable(robot_node src/robot_node.cc)
 target_link_directories(robot_node PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/lib)
 target_link_libraries(robot_node jsoncpp osqp qdldl tinyxml2 ROBOT_LIB ${TORCH_LIBRARIES})
-ament_target_dependencies(robot_node rclcpp message geometry_msgs nav_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs visualization_msgs OpenCV)
+ament_target_dependencies(robot_node rclcpp message uvs_message geometry_msgs nav_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs visualization_msgs OpenCV)
+
+add_executable(robot_exp_node src/robot_exp_node.cc)
+target_link_directories(robot_exp_node PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/lib)
+target_link_libraries(robot_exp_node jsoncpp osqp qdldl tinyxml2 ROBOT_LIB ${TORCH_LIBRARIES})
+ament_target_dependencies(robot_exp_node rclcpp message uvs_message geometry_msgs nav_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs visualization_msgs OpenCV)
+
+add_executable(exp_map_node src/exp_map_node.cc)
+target_link_directories(exp_map_node PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/lib)
+target_link_libraries(exp_map_node jsoncpp osqp qdldl tinyxml2 ROBOT_LIB ${TORCH_LIBRARIES})
+ament_target_dependencies(exp_map_node rclcpp message uvs_message geometry_msgs nav_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs visualization_msgs OpenCV)
+
 
 install(TARGETS 
   sim_node
   robot_node
+  robot_exp_node
+  exp_map_node
   DESTINATION lib/${PROJECT_NAME})
 
 install(

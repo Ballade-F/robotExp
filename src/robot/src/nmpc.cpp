@@ -140,6 +140,18 @@ void MPC::setTrackReference(const Eigen::VectorXd &x,
     x_ref = x;
     y_ref = y;
     theta_ref = theta;
+    //角度限制在-pi到pi之间
+    for (int i = 0; i < theta_ref.size(); i++)
+    {
+        if (theta_ref(i) > M_PI)
+        {
+            theta_ref(i) -= 2 * M_PI;
+        }
+        if (theta_ref(i) < -M_PI)
+        {
+            theta_ref(i) += 2 * M_PI;
+        }
+    }
     v_ref = v;
     w_ref = w;
     enableControl = true;

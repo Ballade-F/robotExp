@@ -71,7 +71,7 @@ void Robot::pncUpdate()
     {
         VectorXd control;
         VectorXd state(5);
-        state << self_state(0), self_state(1), self_state(2), self_ctrl(0), self_ctrl(1);
+        state << self_state(0), self_state(1), self_state(2), self_vw(0), self_vw(1);
         bool done = mpc_ptr->update(state, control);
         if (done)
         {
@@ -88,11 +88,12 @@ void Robot::pncUpdate()
     }
 }
 
-void Robot::perceptionUpdate(const vector<Vector3d> &robot_states_, const vector<Vector3d> &task_states_, const vector<uint8_t> &task_finished_)
+void Robot::perceptionUpdate(const vector<Vector3d> &robot_states_, const vector<Vector3d> &task_states_, const vector<uint8_t> &task_finished_, const Vector2d &self_vw_)
 {
     robot_states = robot_states_;
     task_states = task_states_;
     task_finished = task_finished_;
+    self_vw = self_vw_;
     self_state = robot_states[robot_id];
     perception_counter = 0;//感知到了
 

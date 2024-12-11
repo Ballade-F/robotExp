@@ -55,6 +55,7 @@ class Robot
 //控制
     std::shared_ptr<MPC> mpc_ptr;
     Vector3d self_state;
+    Vector2d self_vw;
     Vector2d self_ctrl;
     bool stop_flag = true;
 
@@ -62,7 +63,7 @@ class Robot
           std::shared_ptr<HybridAStar> astar_, std::shared_ptr<HybridAStar> astar_dist_, std::shared_ptr<Network> network_ptr_);
     void pncUpdate();
     void perceptionUpdate(const vector<Vector3d>& robot_states_, const vector<Vector3d>& task_states_, 
-                          const vector<uint8_t>& task_finished_);
+                          const vector<uint8_t>& task_finished_, const Vector2d &self_vw_);
     void keyframeUpdate();
     void decisionUpdate();
     const Vector2d& ctrlOutput();
