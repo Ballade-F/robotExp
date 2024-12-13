@@ -34,10 +34,10 @@ void SimServer::robot_u_callback(const message::msg::RobotCtrl::SharedPtr msg)
 	robot_com_count.at(robot_id) = 0;
 }
 
-SimServer::SimServer(const vector<Vector3d> &start_, const vector<Vector3d> &task_): Node("sim_node")
+SimServer::SimServer(): Node("sim_node")
 {
 	//读取配置信息
-    this->declare_parameter("map_dir","/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_0");
+    this->declare_parameter("map_dir","/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp");
 	string map_dir = this->get_parameter("map_dir").as_string();
 	string map_csv_path = map_dir + "/info.csv";
     string map_json_path = map_dir + "/batch_info.json";
@@ -70,10 +70,12 @@ SimServer::SimServer(const vector<Vector3d> &start_, const vector<Vector3d> &tas
 	map_resolution_y = map_root["resolution_y"].asDouble();
 
 	vector<vector<Vector2d>> obstacles;
+    vector<Vector3d> start_(map_Nrobot, Vector3d::Zero());
+    vector<Vector3d> task_(map_Ntask, Vector3d::Zero());
 	map_ptr = std::make_shared<Map_2D>();
 	map_ptr->init(map_resolution_x, map_resolution_y, map_Nx, map_Ny, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points);
-	csv2vector(map_csv_path, obstacles, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points);
-	map_ptr->input_map(start_, task_, obstacles);
+	csv2vector(map_csv_path, start_,task_,obstacles, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points);
+    map_ptr->input_map(start_, task_, obstacles);
 
 	robot_states.resize(map_Nrobot, Vector3d::Zero());
 	robot_ctrls.resize(map_Nrobot, Vector2d::Zero());
@@ -184,12 +186,12 @@ int main(int argc, char * argv[])
     tasks.push_back(Vector3d(7.0, 7.0, 0.0));
 
 	rclcpp::init(argc, argv);
-	rclcpp::spin(std::make_shared<SimServer>(starts, tasks));
+	rclcpp::spin(std::make_shared<SimServer>());
 	rclcpp::shutdown();
 	return 0;
 }
 
-void SimServer::csv2vector(const string& csv_path, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point)
+void SimServer::csv2vector(const string& csv_path, vector<Vector3d>& starts_, vector<Vector3d>& tasks_, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point)
 {
     obstacles_.clear();
     for(int i = 0; i < n_obstacle; i++)
@@ -209,8 +211,24 @@ void SimServer::csv2vector(const string& csv_path, vector<vector<Vector2d>>& obs
         {
             row.push_back(token);
         }
-		RCLCPP_INFO(this->get_logger(), "CONDISION:%s", (idx > n_robot+n_task && idx <= n_robot+n_task+n_obstacle*ob_point)?"TRUE":"FALSE");
-        if(idx > n_robot+n_task && idx <= n_robot+n_task+n_obstacle*ob_point)
+		// RCLCPP_INFO(this->get_logger(), "CONDISION:%s", (idx > n_robot+n_task && idx <= n_robot+n_task+n_obstacle*ob_point)?"TRUE":"FALSE");
+        //表头
+        if(idx == 0)
+        {
+            idx++;
+            continue;
+        }
+        else if(idx <= n_robot)
+        {
+            starts_[idx-1][0] = std::stof(row[1]) * map_resolution_x * map_Nx;
+            starts_[idx-1][1] = std::stof(row[2]) * map_resolution_y * map_Ny;
+        }
+        else if(idx <= n_robot+n_task)
+        {
+            tasks_[idx-n_robot-1][0] = std::stof(row[1]) * map_resolution_x * map_Nx;
+            tasks_[idx-n_robot-1][1] = std::stof(row[2]) * map_resolution_y * map_Ny;
+        }
+        else if(idx <= n_robot+n_task+n_obstacle*ob_point)
         {
             int idx_ob = std::stoi(row[0]) - 1;
             int idx_point = (idx - n_robot - n_task - 1) - idx_ob * ob_point;

@@ -1,6 +1,6 @@
 {
     "batch_size": 1,
-    "n_robot": 2,
+    "n_robot": 1,
     "n_task": 5,
     "n_obstacle": 10,
     "ob_points": 4,

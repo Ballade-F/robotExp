@@ -6,7 +6,7 @@
 ExpServer::ExpServer(): Node("exp_node")
 {
     //读取配置信息
-    this->declare_parameter("map_dir","/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_0");
+    this->declare_parameter("map_dir","/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp");
     string map_dir = this->get_parameter("map_dir").as_string();
     string map_csv_path = map_dir + "/info.csv";
     string map_json_path = map_dir + "/batch_info.json";
@@ -87,6 +87,7 @@ ExpServer::ExpServer(): Node("exp_node")
 	marker_array_msg = std::make_shared<visualization_msgs::msg::MarkerArray>();
 	publishOccupancyGrid();
 	publishRobotTaskStates();
+    
 
     //0.1s发送一次消息，各个robot和task的最新状态
     timer_ = this->create_wall_timer(100ms, std::bind(&ExpServer::timer_callback, this));
@@ -199,6 +200,7 @@ void ExpServer::csv2vector(const string& csv_path, vector<Vector3d>& starts_, ve
         //表头
         if(idx == 0)
         {
+            idx++;
             continue;
         }
         else if(idx <= n_robot)
@@ -299,6 +301,8 @@ void ExpServer::publishRobotTaskStates()
 	}
 	marker_array_publisher_->publish(*marker_array_msg);
 }
+
+
 
 int main(int argc, char * argv[])
 {

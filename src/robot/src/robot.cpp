@@ -166,6 +166,12 @@ void Robot::decisionUpdate()
     //如果检测到机器人停车，修改pre_allocation给决策用
     for(int i = 0; i < robot_num; i++)
     {
+        if(i == robot_id)
+        {
+            //自己的pre_allocation是-2
+            pre_allocation[robot_id] = -2;
+            continue;
+        }
         if(robot_intention[i] == -1)
         {
             pre_allocation[i] = -1;
@@ -182,8 +188,7 @@ void Robot::decisionUpdate()
         }
     }
     robot_intention_last = robot_intention;
-    //自己的pre_allocation是-2
-    pre_allocation[robot_id] = -2;
+    
     //allocation
     //任务列表为空或者任务列表中有任务被完成
     if (target_list.size() == 0)

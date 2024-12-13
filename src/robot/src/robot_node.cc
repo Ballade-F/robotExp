@@ -4,7 +4,7 @@
 RobotNode::RobotNode(): Node("robot_node")
 {
     //读取配置信息
-    this->declare_parameter("map_dir","/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_0");
+    this->declare_parameter("map_dir","/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp");
     this->declare_parameter("robot_json_path","/home/jxl3028/Desktop/wzr/robotExp/src/config/robot/robot_0.json");
     string map_dir = this->get_parameter("map_dir").as_string();
     string robot_json_path = this->get_parameter("robot_json_path").as_string();
@@ -82,7 +82,9 @@ RobotNode::RobotNode(): Node("robot_node")
 	vector<Vector3d> starts(map_Nrobot, Vector3d::Zero());
     vector<Vector3d> tasks(map_Ntask, Vector3d::Zero());
     vector<vector<Vector2d>> obstacles;
-    csv2vector(map_csv_path, obstacles, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points);
+    vector<Vector3d> start_(map_Nrobot, Vector3d::Zero());
+    vector<Vector3d> task_(map_Ntask, Vector3d::Zero());
+    csv2vector(map_csv_path, start_,task_, obstacles, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points);
     map_p->input_map(starts, tasks, obstacles);
 
     //hybrid_astar
@@ -218,7 +220,7 @@ int main(int argc, char * argv[])
 }
 
 
-void RobotNode::csv2vector(const string& csv_path, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point)
+void RobotNode::csv2vector(const string& csv_path, vector<Vector3d>& starts_, vector<Vector3d>& tasks_, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point)
 {
     obstacles_.clear();
     for(int i = 0; i < n_obstacle; i++)
@@ -238,12 +240,30 @@ void RobotNode::csv2vector(const string& csv_path, vector<vector<Vector2d>>& obs
         {
             row.push_back(token);
         }
-        if(idx > n_robot+n_task && idx <= n_robot+n_task+n_obstacle*ob_point)
+		// RCLCPP_INFO(this->get_logger(), "CONDISION:%s", (idx > n_robot+n_task && idx <= n_robot+n_task+n_obstacle*ob_point)?"TRUE":"FALSE");
+        //表头
+        if(idx == 0)
+        {
+			idx++;
+            continue;
+        }
+        else if(idx <= n_robot)
+        {
+            starts_[idx-1][0] = std::stof(row[1]) * map_resolution_x * map_Nx;
+            starts_[idx-1][1] = std::stof(row[2]) * map_resolution_y * map_Ny;
+        }
+        else if(idx <= n_robot+n_task)
+        {
+            tasks_[idx-n_robot-1][0] = std::stof(row[1]) * map_resolution_x * map_Nx;
+            tasks_[idx-n_robot-1][1] = std::stof(row[2]) * map_resolution_y * map_Ny;
+        }
+        else if(idx <= n_robot+n_task+n_obstacle*ob_point)
         {
             int idx_ob = std::stoi(row[0]) - 1;
             int idx_point = (idx - n_robot - n_task - 1) - idx_ob * ob_point;
             obstacles_[idx_ob][idx_point][0] = std::stof(row[1]) * map_resolution_x * map_Nx;
             obstacles_[idx_ob][idx_point][1] = std::stof(row[2]) * map_resolution_y * map_Ny;
+			RCLCPP_INFO(this->get_logger(), "obstacle: %d, point: %d, x: %f, y: %f", idx_ob, idx_point, obstacles_[idx_ob][idx_point][0], obstacles_[idx_ob][idx_point][1]);
         }
         idx++;
     }

@@ -55,7 +55,7 @@ public:
 
 
 
-    SimServer(const vector<Vector3d> &start_, const vector<Vector3d> &task_);
+    SimServer();
     void updateStates();
 
     // //显示与画图用
@@ -71,7 +71,7 @@ public:
     void timer_callback();
     void robot_u_callback(const message::msg::RobotCtrl::SharedPtr msg);
     
-    void csv2vector(const string& csv_path, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point);
+    void csv2vector(const string& csv_path, vector<Vector3d>& starts_, vector<Vector3d>& tasks_, vector<vector<Vector2d>>& obstacles_, int n_robot, int n_task, int n_obstacle, int ob_point);
 
     void publishOccupancyGrid();
     void publishRobotTaskStates();

@@ -236,6 +236,7 @@ void RobotExpNode::csv2vector(const string& csv_path, vector<Vector3d>& starts_,
         //表头
         if(idx == 0)
         {
+            idx++;
             continue;
         }
         else if(idx <= n_robot)

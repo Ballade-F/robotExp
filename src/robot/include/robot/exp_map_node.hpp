@@ -14,6 +14,7 @@
 #include "message/msg/robot_ctrl.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
+
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "tf2/LinearMath/Quaternion.h"
 #include "uvs_message/msg/uv_opt_pose_list.hpp"
@@ -56,6 +57,7 @@ public:
     std::shared_ptr<nav_msgs::msg::OccupancyGrid> occupancy_grid_msg;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_array_publisher_;
     std::shared_ptr<visualization_msgs::msg::MarkerArray> marker_array_msg;
+    
 
     //0.1s发送一次消息，各个robot和task的最新状态
     rclcpp::TimerBase::SharedPtr timer_;
@@ -72,4 +74,5 @@ public:
 
     void publishOccupancyGrid();
     void publishRobotTaskStates();
+    
 };
