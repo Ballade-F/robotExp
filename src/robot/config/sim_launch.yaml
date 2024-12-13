@@ -1,7 +1,11 @@
 /sim_node:
   ros__parameters:
-    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_0"
-/robot_node:
+    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp"
+/robot_0_node:
   ros__parameters:
-    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_0"
+    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp"
     robot_json_path: "/home/jxl3028/Desktop/wzr/robotExp/src/config/robot/robot_0.json"
+/robot_0_node:
+  ros__parameters:
+    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp"
+    robot_json_path: "/home/jxl3028/Desktop/wzr/robotExp/src/config/robot/robot_1.json"

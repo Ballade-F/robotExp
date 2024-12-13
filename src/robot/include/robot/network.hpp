@@ -41,8 +41,8 @@ public:
     int r_point;
     double x_max;
     double y_max;
-    double v_x_max;
-    double v_y_max;
+    double norm_proportion;//归一化比例,面积归一化
+    double v_keyframe_max;//相邻关键帧之间的最大速度，用于归一化，单位m
     string allocation_model_path;
     string intention_model_path;
 
@@ -64,7 +64,7 @@ public:
     AllocationResult allocation_result;
 
 
-    Network(double x_max_, double y_max_, double v_x_max_, double v_y_max_, int n_robot_, int n_task_, int n_obstacle_, int ob_point_, int r_point_,
+    Network(double x_max_, double y_max_, double v_keyframe_max_, int n_robot_, int n_task_, int n_obstacle_, int ob_point_, int r_point_,
             string allocation_model_path_, string intention_model_path_, string device_string_, string map_csv_path_);
 
     const AllocationResult& getAllocation(const vector<Vector3d>& robot_states_, const vector<Vector3d>& task_states_, 

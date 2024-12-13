@@ -116,11 +116,11 @@ RobotNode::RobotNode(): Node("robot_node")
     
     double x_max = map_Nx * map_resolution_x;
     double y_max = map_Ny * map_resolution_y;
-    double vx_max_network = planner_Vmax * ROBOT_KEYFRAME_PERIOD.count() / 1000 / x_max;
-    double vy_max_network = planner_Vmax * ROBOT_KEYFRAME_PERIOD.count() / 1000 / y_max;
+    double v_max_network = 0.6*planner_Vmax * ROBOT_KEYFRAME_PERIOD.count() / 1000 ;
+    
     //debug 
-    cout << "vx_max_network: " << vx_max_network << " vy_max_network: " << vy_max_network << endl;
-    network_p = std::make_shared<Network>(x_max, y_max, vx_max_network, vy_max_network, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points, ROBOT_BUFFER_SIZE,
+    cout << "v_max_network: " << v_max_network  << endl;
+    network_p = std::make_shared<Network>(x_max, y_max, v_max_network, map_Nrobot, map_Ntask, map_Nobstacle, map_ob_points, ROBOT_BUFFER_SIZE,
                                           allocation_model_path, intention_model_path, device_string, map_csv_path);
 
     robot_states.resize(map_Nrobot, Vector3d::Zero());
@@ -263,7 +263,7 @@ void RobotNode::csv2vector(const string& csv_path, vector<Vector3d>& starts_, ve
             int idx_point = (idx - n_robot - n_task - 1) - idx_ob * ob_point;
             obstacles_[idx_ob][idx_point][0] = std::stof(row[1]) * map_resolution_x * map_Nx;
             obstacles_[idx_ob][idx_point][1] = std::stof(row[2]) * map_resolution_y * map_Ny;
-			RCLCPP_INFO(this->get_logger(), "obstacle: %d, point: %d, x: %f, y: %f", idx_ob, idx_point, obstacles_[idx_ob][idx_point][0], obstacles_[idx_ob][idx_point][1]);
+			// RCLCPP_INFO(this->get_logger(), "obstacle: %d, point: %d, x: %f, y: %f", idx_ob, idx_point, obstacles_[idx_ob][idx_point][0], obstacles_[idx_ob][idx_point][1]);
         }
         idx++;
     }

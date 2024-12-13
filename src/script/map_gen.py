@@ -321,12 +321,12 @@ if __name__ == '__main__':
     ob_center_grid *= 0.58
     
     ob_len = 0.8
-    starts = np.array([[0.5, 0.5], [5.3, 0.5]])
+    starts = np.array([[0.5, 1.0], [3.0, 1.5]])
     tasks = np.array(
-        [[6.5, 4.5], [2.5, 5.5], [8.5, 6.5], [1.5, 9.5], [5.5, 9.5]])
+        [[6.5, 4.5], [1.5, 3.5], [8.5, 6.5], [2.0, 7.5], [5.5, 9.5]])
     tasks *= 0.58
     map.setExp(ob_center_grid, ob_theta, ob_len, starts, tasks)
-    map.saveExpMap('/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_xep')
+    map.saveExpMap('/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp')
     
     # rng = np.random.default_rng(2)
     # map.setObstacleExp(rng)
