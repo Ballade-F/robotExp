@@ -23,6 +23,7 @@ void Robot::pncUpdate()
 {
     if (!start_flag)
     {
+        self_ctrl = Vector2d::Zero();
         return;
     }
     if (perception_counter > perception_max)

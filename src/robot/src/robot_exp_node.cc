@@ -116,7 +116,7 @@ RobotExpNode::RobotExpNode(): Node("robot_exp_node")
     
     double x_max = map_Nx * map_resolution_x;
     double y_max = map_Ny * map_resolution_y;
-    double v_max_network = planner_Vmax * ROBOT_KEYFRAME_PERIOD.count() / 1000 ;
+    double v_max_network = 0.6 * planner_Vmax * ROBOT_KEYFRAME_PERIOD.count() / 1000 ;
     
     //debug 
     cout << "v_max_network: " << v_max_network  << endl;
@@ -131,15 +131,19 @@ RobotExpNode::RobotExpNode(): Node("robot_exp_node")
     robot_p = std::make_shared<Robot>(robot_id, map_p, mpc_p, hybrid_astar_p, hybrid_dist_astar_p, network_p);
 
     //ros2
-    publisher_ = this->create_publisher<uvs_message::msg::UvEmbKinetics>("uvs_emb_kinetics", 10);
+    //命名空间为“/robot_”+robot_id
+    string robot_ns = "/robot_" + to_string(robot_id);
+    string pub_vw_topic = robot_ns + "/uvs_emb_kinetics";
+    publisher_ = this->create_publisher<uvs_message::msg::UvEmbKinetics>(pub_vw_topic, 10);
     //订阅机器人位姿与任务
     subscription_ = this->create_subscription<message::msg::EnvState>(
                     "env_state", 10, std::bind(&RobotExpNode::env_callback, this, _1));
     //订阅vw
+    string sub_status_topic = robot_ns + "/uvs_emb_status";
     subscription_status = this->create_subscription<uvs_message::msg::UvEmbStatus>(
-                    "uvs_emb_status", 10, std::bind(&RobotExpNode::status_callback, this, _1));
-    timer_ctrl = this->create_wall_timer(
-                ROBOT_CONTROL_PERIOD, std::bind(&RobotExpNode::ctrl_timer_callback, this));
+                    sub_status_topic, 10, std::bind(&RobotExpNode::status_callback, this, _1));
+    // timer_ctrl = this->create_wall_timer(
+    //             ROBOT_CONTROL_PERIOD, std::bind(&RobotExpNode::ctrl_timer_callback, this));
     timer_keyframe = this->create_wall_timer(
                 ROBOT_KEYFRAME_PERIOD, std::bind(&RobotExpNode::keyframe_timer_callback, this));
     //回调组，不可重入
@@ -201,7 +205,7 @@ void RobotExpNode::env_callback(const message::msg::EnvState::SharedPtr msg)
         task_states[i](2) = msg->task_list[i].pose.theta;
         task_finished[i] = msg->task_list[i].finished;
     }
-    
+    ctrl_timer_callback();
 }
 
 void RobotExpNode::status_callback(const uvs_message::msg::UvEmbStatus::SharedPtr msg)

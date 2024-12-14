@@ -1,5 +1,5 @@
 {
-    "robot_id": 1,
+    "robot_id": 2,
 
     "planner_Ntheta": 16,
     "planner_Vmax": 0.3,

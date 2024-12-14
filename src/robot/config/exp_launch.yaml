@@ -1,0 +1,19 @@
+/exp_map_node:
+  ros__parameters:
+    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp"
+/robot_0_node:
+  ros__parameters:
+    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp"
+    robot_json_path: "/home/jxl3028/Desktop/wzr/robotExp/src/config/robot/robot_0.json"
+/robot_1_node:
+  ros__parameters:
+    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp"
+    robot_json_path: "/home/jxl3028/Desktop/wzr/robotExp/src/config/robot/robot_1.json"
+/robot_2_node:
+  ros__parameters:
+    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp"
+    robot_json_path: "/home/jxl3028/Desktop/wzr/robotExp/src/config/robot/robot_2.json"
+/uvs_optitrack:
+  ros__parameters:
+    LocalIPv4Addr: "192.168.50.114"
+    ServerIPv4Addr: "192.168.50.194"

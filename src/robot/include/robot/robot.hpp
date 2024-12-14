@@ -69,8 +69,8 @@ class Robot
     const Vector2d& ctrlOutput();
 
 private:
-    uint8_t perception_counter = 10; //感知丢失计数,一开始不能动
-    uint8_t perception_max = 5; //感知丢失最大数
+    uint8_t perception_counter = 20; //感知丢失计数,一开始不能动
+    uint8_t perception_max = 10; //感知丢失最大数
 
     void _get_intention(void);
     void _get_allocation(void);
