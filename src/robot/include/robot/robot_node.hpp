@@ -22,8 +22,8 @@ using namespace std::chrono_literals;
 using std::placeholders::_1;
 
 #define ROBOT_CONTROL_PERIOD (100ms)
-#define ROBOT_KEYFRAME_PERIOD (1000ms)
-#define ROBOT_DECISION_PERIOD (2000ms)
+#define ROBOT_KEYFRAME_PERIOD (500ms)
+#define ROBOT_DECISION_PERIOD (1000ms)
 #define ROBOT_BUFFER_SIZE 5
 
 class RobotNode : public rclcpp::Node

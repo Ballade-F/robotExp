@@ -232,75 +232,75 @@ void Robot::decisionUpdate()
 
     //冲突消解，最多robot_num-1次
     bool conflict_flag = false;
-    int _task_id = -1;
-    int _robot_conflict_id = -1;
-    for(int _iterations = 0; _iterations < robot_num-1; _iterations++)
-    {
-        conflict_flag = false;
-        _task_id = -1;
-        _robot_conflict_id = -1;
-        for (int i = 0; i < robot_num; i++)
-        {
-            if(i==robot_id)
-            {
-                continue;
-            }
-            //意图相同
-            if(robot_intention[i] == target_list[0])
-            {
-                cout << "self_id: " << robot_id << "has same intention with other_id: " << i << endl;
-                _task_id = target_list[0];
-                //计算各自的代价
-                PlanResult& plan_result_other = astar_dist_ptr->plan(robot_states[i], task_states[_task_id]);
-                bool other_success = plan_result_other.success;
-                double cost_other = plan_result_other.cost;
-                PlanResult& plan_result_self = astar_dist_ptr->plan(self_state, task_states[_task_id]);
-                bool self_success = plan_result_self.success;
-                double cost_self = plan_result_self.cost;
-                if(plan_result_other.success && plan_result_self.success)
-                {
-                    if(cost_other < cost_self)
-                    {
-                        conflict_flag = true;
-                        _robot_conflict_id = i;
-                        break;
-                    }
-                    else
-                    {
-                        //debug
-                        cout << "self_id: " << robot_id << " cost_self: " << cost_self << " cost_other: " << cost_other << endl;
-                    }
-                }
-                else if(plan_result_other.success)
-                {
-                    conflict_flag = true;
-                    _robot_conflict_id = i;
-                    break;
-                }
+    // int _task_id = -1;
+    // int _robot_conflict_id = -1;
+    // for(int _iterations = 0; _iterations < robot_num-1; _iterations++)
+    // {
+    //     conflict_flag = false;
+    //     _task_id = -1;
+    //     _robot_conflict_id = -1;
+    //     for (int i = 0; i < robot_num; i++)
+    //     {
+    //         if(i==robot_id)
+    //         {
+    //             continue;
+    //         }
+    //         //意图相同
+    //         if(robot_intention[i] == target_list[0])
+    //         {
+    //             cout << "self_id: " << robot_id << "has same intention with other_id: " << i << endl;
+    //             _task_id = target_list[0];
+    //             //计算各自的代价
+    //             PlanResult& plan_result_other = astar_dist_ptr->plan(robot_states[i], task_states[_task_id]);
+    //             bool other_success = plan_result_other.success;
+    //             double cost_other = plan_result_other.cost;
+    //             PlanResult& plan_result_self = astar_dist_ptr->plan(self_state, task_states[_task_id]);
+    //             bool self_success = plan_result_self.success;
+    //             double cost_self = plan_result_self.cost;
+    //             if(plan_result_other.success && plan_result_self.success)
+    //             {
+    //                 if(cost_other < cost_self)
+    //                 {
+    //                     conflict_flag = true;
+    //                     _robot_conflict_id = i;
+    //                     break;
+    //                 }
+    //                 else
+    //                 {
+    //                     //debug
+    //                     cout << "self_id: " << robot_id << " cost_self: " << cost_self << " cost_other: " << cost_other << endl;
+    //                 }
+    //             }
+    //             else if(plan_result_other.success)
+    //             {
+    //                 conflict_flag = true;
+    //                 _robot_conflict_id = i;
+    //                 break;
+    //             }
 
-            }
-        }
-        //没有冲突
-        if(!conflict_flag)
-        {
-            break;
-        }
-        //冲突消解
-        else
-        {
-            cout << "self_id: " << robot_id << " conflict with other_id: " << _robot_conflict_id << endl;
-            reallocation_flag = true;
-            pre_allocation[_robot_conflict_id] = _task_id;//让出任务
-            _get_allocation();
-            if (target_list.size() == 0)
-            {
-                stop_flag = true;
-                replan_flag = false;
-                cout << "robot_id: " << robot_id << " conflict resolution, target_list is empty, stop!" << endl;
-                return;
-            }
-        }
-    }
+    //         }
+    //     }
+    //     //没有冲突
+    //     if(!conflict_flag)
+    //     {
+    //         break;
+    //     }
+    //     //冲突消解
+    //     else
+    //     {
+    //         cout << "self_id: " << robot_id << " conflict with other_id: " << _robot_conflict_id << endl;
+    //         reallocation_flag = true;
+    //         pre_allocation[_robot_conflict_id] = _task_id;//让出任务
+    //         _get_allocation();
+    //         if (target_list.size() == 0)
+    //         {
+    //             stop_flag = true;
+    //             replan_flag = false;
+    //             cout << "robot_id: " << robot_id << " conflict resolution, target_list is empty, stop!" << endl;
+    //             return;
+    //         }
+    //     }
+    // }
     if (reallocation_flag)
     {
         replan_flag = true;
