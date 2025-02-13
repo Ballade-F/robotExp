@@ -34,6 +34,10 @@ class Map():
         self.starts_grid = []
         self.tasks_grid = []
         self.grid_map = np.zeros((n_x, n_y))
+        self.grid_map[0,:]=1
+        self.grid_map[n_x-1,:]=1
+        self.grid_map[:,0]=1
+        self.grid_map[:,n_y-1]=1
 
     def _obstacle2grid(self):
         obstacles_back = deepcopy(self.obstacles)
@@ -311,8 +315,8 @@ class Map():
 if __name__ == '__main__':
     map = Map(10, 2, 5, 116, 116, 0.05, 0.05,4)
     ob_center_grid = np.array(
-        [[3,3],[3,4],[7,2],[4,5],[9,5],
-         [1.5,6.5],[6.5,6.5],[4.5,8.5],[7,9],[8.5,8.5]], dtype=float)
+        [[4.5,0.5],[3,1.5],[3,3],[3,4.5],[4.5,5],
+         [4.5,6.5],[6,7],[7.5,7.5],[9.0,8.0],[10.0,7.0]], dtype=float)
     ob_theta = np.zeros(10)
     
     # ob_center_grid = np.array([[3.0, 3.0]], dtype=float)
@@ -320,13 +324,13 @@ if __name__ == '__main__':
     
     ob_center_grid *= 0.58
     
-    ob_len = 0.8
+    ob_len = 0.9
     starts = np.array([[0.5, 1.0], [3.0, 1.5]])
     tasks = np.array(
-        [[6.5, 4.5], [1.5, 3.5], [8.5, 6.5], [2.0, 7.5], [5.5, 9.5]])
+        [[6.5, 4.5], [1.5, 3.5], [8.5, 6.5], [2.0, 7.5], [7.0, 9.0]])
     tasks *= 0.58
     map.setExp(ob_center_grid, ob_theta, ob_len, starts, tasks)
-    map.saveExpMap('/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp')
+    map.saveExpMap('/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp_2')
     
     # rng = np.random.default_rng(2)
     # map.setObstacleExp(rng)

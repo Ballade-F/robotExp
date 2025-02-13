@@ -332,7 +332,15 @@ void Robot::_get_allocation(void)
         target_list.clear();
         target_list.push_back(0);
         target_list.push_back(2);
-        target_list.push_back(4);
+        // target_list.push_back(4);
+        return ;
+    }
+    if(robot_id == 0)
+    {
+        target_list.clear();
+        target_list.push_back(1);
+        target_list.push_back(3);
+        // target_list.push_back(4);
         return ;
     }
     //将自己换到0号位置

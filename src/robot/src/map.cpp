@@ -17,7 +17,16 @@ void Map_2D::init(double resolution_x, double resolution_y, int n_x, int n_y, in
     {
         grid_map[i] = 0;
     }
-
+    for(int i=0;i<n_x;++i)
+    {
+        grid_map[i]=1;
+        grid_map[n_x*(n_y-1)+i]=1;
+    }
+    for(int j=0;j<n_y;++j)
+    {
+        grid_map[n_x*j]=1;
+        grid_map[n_x*j+n_x-1]=1;
+    }
     // 初始化任务状态
     task_status.resize(n_tasks);
     for (int i = 0; i < n_tasks; i++)
@@ -40,8 +49,8 @@ void Map_2D::input_map(const vector<Vector3d> &starts_, const vector<Vector3d> &
         for (int j = 0; j < obstacles[i].size(); j++)
         {
             Vector2d point = obstacles[i][j];
-            int x_idx = min(max(static_cast<int>(point.x() / resolution_x), 0), n_x - 1);
-            int y_idx = min(max(static_cast<int>(point.y() / resolution_y), 0), n_y - 1);
+            int x_idx = round(min(max((point.x() / resolution_x), 0.0), n_x - 1.0));
+            int y_idx = round(min(max((point.y() / resolution_y), 0.0), n_y - 1.0));
             obstacle.push_back(Vector2i(x_idx, y_idx));
             min_y = min(min_y, y_idx);
             max_y = max(max_y, y_idx);
@@ -66,7 +75,7 @@ void Map_2D::input_map(const vector<Vector3d> &starts_, const vector<Vector3d> &
             }
             edge_table.push_back(Vector4d(point1.y(), point2.y(), point1.x(), (point2.x() - point1.x()) / (point2.y() - point1.y())));
         }
-        for (int y = min_y+1; y < max_y+1; y++)
+        for (int y = min_y; y <= max_y; y++)
         {
             vector<Vector2i> intersections;
             for (int j = 0; j < edge_table.size(); j++)
@@ -82,7 +91,7 @@ void Map_2D::input_map(const vector<Vector3d> &starts_, const vector<Vector3d> &
             {
                 int x1 = intersections[j].x();
                 int x2 = intersections[j + 1].x();
-                for (int x = x1; x < x2; x++)
+                for (int x = x1; x <= x2; x++)
                 {
                     grid_map[y*n_x + x] = 1;
                 }

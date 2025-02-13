@@ -1,17 +1,17 @@
 /exp_map_node:
   ros__parameters:
-    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp"
+    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp_2"
 /robot_0_node:
   ros__parameters:
-    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp"
+    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp_2"
     robot_json_path: "/home/jxl3028/Desktop/wzr/robotExp/src/config/robot/robot_0.json"
 /robot_1_node:
   ros__parameters:
-    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp"
+    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp_2"
     robot_json_path: "/home/jxl3028/Desktop/wzr/robotExp/src/config/robot/robot_1.json"
 /robot_2_node:
   ros__parameters:
-    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp"
+    map_dir: "/home/jxl3028/Desktop/wzr/robotExp/src/config/map/map_exp_2"
     robot_json_path: "/home/jxl3028/Desktop/wzr/robotExp/src/config/robot/robot_2.json"
 /uvs_optitrack:
   ros__parameters:

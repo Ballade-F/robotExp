@@ -164,6 +164,10 @@ public:
     inline bool isCollision(Vector3d state)
     {
         int index = getGridMapIndex(state);
+        if (state[0] < 0 || state[0] >= map_max[0] || state[1] < 0 || state[1] >= map_max[1])
+        {
+            return 1;
+        }
         return grid_map[index] == 1;
     }
 

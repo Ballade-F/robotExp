@@ -1,0 +1,11 @@
+{
+    "batch_size": 1,
+    "n_robot": 2,
+    "n_task": 5,
+    "n_obstacle": 10,
+    "ob_points": 4,
+    "n_x": 116,
+    "n_y": 116,
+    "resolution_x": 0.05,
+    "resolution_y": 0.05
+}
